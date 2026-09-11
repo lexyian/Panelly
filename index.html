@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panelly — Manga Reader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="logo" href="/">Panelly</a>
+    <form class="search-form" id="searchForm">
+      <input type="text" id="searchInput" placeholder="Search manga…" autocomplete="off" />
+      <button type="submit">Search</button>
+    </form>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <p class="hero-eyebrow-hidden"></p>
+    </section>
+
+    <section class="rail">
+      <div class="rail-header">
+        <h2 id="gridTitle">Trending now</h2>
+      </div>
+      <div class="manga-grid" id="mangaGrid">
+        <p class="status-msg" id="statusMsg">Loading manga…</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Manga data and cover art provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
