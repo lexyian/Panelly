@@ -214,7 +214,7 @@ function createPanelCard(
 
         <span class="open-file">
           OPEN SERIES
-          <b>↗</b>
+          <b>→</b>
         </span>
 
       </div>
