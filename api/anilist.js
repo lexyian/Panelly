@@ -25,10 +25,40 @@ async function requestAniList(query, variables = {}) {
   return json.data;
 }
 
+function isAllowedMedia(media) {
+  if (!media) {
+    return false;
+  }
+
+  if (media.isAdult) {
+    return false;
+  }
+
+  const blockedTags = new Set([
+    "Hentai"
+  ]);
+
+  const tags =
+    Array.isArray(media.tags)
+      ? media.tags
+      : [];
+
+  const hasBlockedTag =
+    tags.some(
+      (tag) =>
+        tag?.isAdult ||
+        blockedTags.has(tag?.name)
+    );
+
+  return !hasBlockedTag;
+}
+
 module.exports = async function handler(req, res) {
-  const mode = String(
-    req.query.mode || "browse"
-  );
+  const mode =
+    String(
+      req.query.mode ||
+      "browse"
+    );
 
   try {
     if (mode === "genres") {
@@ -39,14 +69,33 @@ module.exports = async function handler(req, res) {
       `;
 
       const data =
-        await requestAniList(query);
+        await requestAniList(
+          query
+        );
 
-      const genres =
+      const normalGenres =
         Array.isArray(
           data.GenreCollection
         )
           ? data.GenreCollection
           : [];
+
+      const filteredGenres =
+        normalGenres.filter(
+          (genre) =>
+            String(genre)
+              .toLowerCase() !==
+            "hentai"
+        );
+
+      const genres = [
+        ...filteredGenres,
+        "Girls' Love",
+        "Boys' Love"
+      ].sort(
+        (a, b) =>
+          a.localeCompare(b)
+      );
 
       res.setHeader(
         "Cache-Control",
@@ -157,7 +206,9 @@ module.exports = async function handler(req, res) {
 
       if (
         !data.Media ||
-        data.Media.isAdult
+        !isAllowedMedia(
+          data.Media
+        )
       ) {
         return res.status(404).json({
           error: "Manga unavailable"
@@ -176,21 +227,46 @@ module.exports = async function handler(req, res) {
 
     if (mode === "browse") {
       const search =
-        typeof req.query.search === "string" &&
+        typeof req.query.search ===
+          "string" &&
         req.query.search.trim()
           ? req.query.search.trim()
           : null;
 
-      const genre =
-        typeof req.query.genre === "string" &&
+      const selectedGenre =
+        typeof req.query.genre ===
+          "string" &&
         req.query.genre.trim()
           ? req.query.genre.trim()
           : null;
 
+      let genre =
+        selectedGenre;
+
+      let tag = null;
+
+      if (
+        selectedGenre ===
+        "Girls' Love"
+      ) {
+        genre = null;
+        tag = "Yuri";
+      }
+
+      if (
+        selectedGenre ===
+        "Boys' Love"
+      ) {
+        genre = null;
+        tag = "Boys' Love";
+      }
+
       const page =
         Math.max(
           1,
-          Number(req.query.page) || 1
+          Number(
+            req.query.page
+          ) || 1
         );
 
       const perPage =
@@ -198,13 +274,16 @@ module.exports = async function handler(req, res) {
           20,
           Math.max(
             1,
-            Number(req.query.perPage) || 8
+            Number(
+              req.query.perPage
+            ) || 8
           )
         );
 
       const requestedSort =
         String(
-          req.query.sort || "trending"
+          req.query.sort ||
+          "trending"
         );
 
       let sort = [
@@ -218,14 +297,16 @@ module.exports = async function handler(req, res) {
           "POPULARITY_DESC"
         ];
       } else if (
-        requestedSort === "fresh"
+        requestedSort ===
+        "fresh"
       ) {
         sort = [
           "UPDATED_AT_DESC",
           "POPULARITY_DESC"
         ];
       } else if (
-        requestedSort === "popular"
+        requestedSort ===
+        "popular"
       ) {
         sort = [
           "POPULARITY_DESC",
@@ -239,6 +320,7 @@ module.exports = async function handler(req, res) {
           $perPage: Int
           $search: String
           $genre: String
+          $tag: String
           $sort: [MediaSort]
         ) {
           Page(
@@ -259,6 +341,7 @@ module.exports = async function handler(req, res) {
               isAdult: false
               search: $search
               genre: $genre
+              tag: $tag
               sort: $sort
             ) {
               id
@@ -279,6 +362,7 @@ module.exports = async function handler(req, res) {
               chapters
               volumes
               countryOfOrigin
+              isAdult
 
               averageScore
               popularity
@@ -320,6 +404,7 @@ module.exports = async function handler(req, res) {
             perPage,
             search,
             genre,
+            tag,
             sort
           }
         );
@@ -329,8 +414,7 @@ module.exports = async function handler(req, res) {
           data.Page?.media ||
           []
         ).filter(
-          (item) =>
-            !item.isAdult
+          isAllowedMedia
         );
 
       res.setHeader(
