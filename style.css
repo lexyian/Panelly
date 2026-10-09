@@ -72,22 +72,18 @@ img {
   flex-shrink: 0;
 }
 
-.brand-mark {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  background: var(--accent);
-  border: 2px solid var(--white);
-  font-family: "Archivo Black", sans-serif;
-  font-size: 20px;
-  transform: rotate(-3deg);
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-name {
   font-family: "Archivo Black", sans-serif;
   font-size: 23px;
   letter-spacing: -0.6px;
+  color: var(--white);
 }
 
 .desktop-nav {
@@ -976,10 +972,16 @@ img {
   background: #ccc;
 }
 
-@media (max-width: 1180px) {
-  .desktop-nav {
-    display: none;
+@media (max-width: 680px) {
+  .brand-logo {
+    width: 34px;
+    height: 34px;
   }
+
+  .brand-name {
+    font-size: 20px;
+  }
+}
 
   .search-form {
     margin-left: auto;
