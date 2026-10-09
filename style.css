@@ -176,13 +176,14 @@ button {
   color: rgba(243, 237, 223, 0.45);
 }
 
-.header-search button {
-  width: 54px;
-  border: 2px solid var(--paper);
-  background: var(--red);
-  color: var(--paper);
-  font-size: 24px;
-  font-weight: 900;
+.header-search button,
+.primary-cta b,
+.open-file b,
+.roulette-btn b,
+.continue-arrow,
+.chapter-read {
+  font-family: "Inter", Arial, sans-serif;
+  font-variant-emoji: text;
 }
 
 .desktop-nav {
