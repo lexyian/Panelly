@@ -34,31 +34,29 @@ function isAllowedMedia(media) {
     return false;
   }
 
-  const blockedTags = new Set([
-    "Hentai"
-  ]);
-
   const tags =
     Array.isArray(media.tags)
       ? media.tags
       : [];
 
-  const hasBlockedTag =
-    tags.some(
-      (tag) =>
-        tag?.isAdult ||
-        blockedTags.has(tag?.name)
-    );
+  const blocked =
+    tags.some((tag) => {
+      if (tag?.isAdult) {
+        return true;
+      }
 
-  return !hasBlockedTag;
+      return (
+        String(tag?.name || "")
+          .toLowerCase() === "hentai"
+      );
+    });
+
+  return !blocked;
 }
 
 module.exports = async function handler(req, res) {
   const mode =
-    String(
-      req.query.mode ||
-      "browse"
-    );
+    String(req.query.mode || "browse");
 
   try {
     if (mode === "genres") {
@@ -69,33 +67,30 @@ module.exports = async function handler(req, res) {
       `;
 
       const data =
-        await requestAniList(
-          query
-        );
+        await requestAniList(query);
 
       const normalGenres =
-        Array.isArray(
-          data.GenreCollection
-        )
+        Array.isArray(data.GenreCollection)
           ? data.GenreCollection
           : [];
 
-      const filteredGenres =
-        normalGenres.filter(
+      const genres = [
+        ...normalGenres.filter(
           (genre) =>
             String(genre)
-              .toLowerCase() !==
-            "hentai"
-        );
-
-      const genres = [
-        ...filteredGenres,
+              .toLowerCase() !== "hentai"
+        ),
         "Girls' Love",
         "Boys' Love"
-      ].sort(
-        (a, b) =>
-          a.localeCompare(b)
-      );
+      ]
+        .filter(
+          (value, index, array) =>
+            array.indexOf(value) === index
+        )
+        .sort(
+          (a, b) =>
+            a.localeCompare(b)
+        );
 
       res.setHeader(
         "Cache-Control",
@@ -133,7 +128,6 @@ module.exports = async function handler(req, res) {
             }
 
             synonyms
-
             description(asHtml: false)
 
             status
@@ -162,7 +156,6 @@ module.exports = async function handler(req, res) {
             }
 
             bannerImage
-
             genres
 
             tags {
@@ -206,9 +199,7 @@ module.exports = async function handler(req, res) {
 
       if (
         !data.Media ||
-        !isAllowedMedia(
-          data.Media
-        )
+        !isAllowedMedia(data.Media)
       ) {
         return res.status(404).json({
           error: "Manga unavailable"
@@ -264,9 +255,7 @@ module.exports = async function handler(req, res) {
       const page =
         Math.max(
           1,
-          Number(
-            req.query.page
-          ) || 1
+          Number(req.query.page) || 1
         );
 
       const perPage =
@@ -274,16 +263,13 @@ module.exports = async function handler(req, res) {
           20,
           Math.max(
             1,
-            Number(
-              req.query.perPage
-            ) || 8
+            Number(req.query.perPage) || 8
           )
         );
 
       const requestedSort =
         String(
-          req.query.sort ||
-          "trending"
+          req.query.sort || "trending"
         );
 
       let sort = [
@@ -297,16 +283,14 @@ module.exports = async function handler(req, res) {
           "POPULARITY_DESC"
         ];
       } else if (
-        requestedSort ===
-        "fresh"
+        requestedSort === "fresh"
       ) {
         sort = [
           "UPDATED_AT_DESC",
           "POPULARITY_DESC"
         ];
       } else if (
-        requestedSort ===
-        "popular"
+        requestedSort === "popular"
       ) {
         sort = [
           "POPULARITY_DESC",
@@ -354,7 +338,6 @@ module.exports = async function handler(req, res) {
               }
 
               synonyms
-
               description(asHtml: false)
 
               status
@@ -381,7 +364,6 @@ module.exports = async function handler(req, res) {
               }
 
               bannerImage
-
               genres
 
               tags {
