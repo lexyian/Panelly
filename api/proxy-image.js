@@ -1,3 +1,5 @@
+const { Readable } = require("node:stream");
+
 module.exports = async function handler(req, res) {
   const url = req.query.url;
 
@@ -44,8 +46,7 @@ module.exports = async function handler(req, res) {
     const upstream = await fetch(target.toString(), {
       headers: {
         "User-Agent": "Panelly-School-Project/1.0",
-        Accept:
-          "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         Referer: "https://mangadex.org/",
       },
     });
@@ -62,26 +63,57 @@ module.exports = async function handler(req, res) {
 
     if (!contentType.startsWith("image/")) {
       return res.status(502).json({
-        error: "Upstream response was not an image",
+        error: "Response was not an image",
       });
     }
 
-    const buffer = Buffer.from(
-      await upstream.arrayBuffer()
-    );
-
     res.setHeader("Content-Type", contentType);
+
     res.setHeader(
       "Cache-Control",
-      "public, s-maxage=3600, stale-while-revalidate=86400"
+      "public, max-age=86400"
     );
 
-    return res.status(200).send(buffer);
+    res.setHeader(
+      "Vercel-CDN-Cache-Control",
+      "public, s-maxage=604800, stale-while-revalidate=2592000"
+    );
+
+    const contentLength =
+      upstream.headers.get("content-length");
+
+    if (contentLength) {
+      res.setHeader(
+        "Content-Length",
+        contentLength
+      );
+    }
+
+    if (!upstream.body) {
+      return res.status(502).json({
+        error: "Empty image response",
+      });
+    }
+
+    await new Promise((resolve, reject) => {
+      const stream = Readable.fromWeb(
+        upstream.body
+      );
+
+      stream.on("error", reject);
+      res.on("finish", resolve);
+
+      stream.pipe(res);
+    });
   } catch (err) {
     console.error(err);
 
-    return res.status(502).json({
-      error: "Image proxy failed",
-    });
+    if (!res.headersSent) {
+      return res.status(502).json({
+        error: "Image proxy failed",
+      });
+    }
+
+    res.end();
   }
 };
