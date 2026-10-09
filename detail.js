@@ -233,17 +233,34 @@ function renderDetail(manga) {
 function renderChapters(chapters) {
   chapterListEl.innerHTML = "";
 
-  if (!chapters.length) {
+  const readableChapters = chapters.filter(
+    (chapter) => !chapter.attributes?.externalUrl
+  );
+
+  const uniqueChapters = [];
+  const seen = new Set();
+
+  readableChapters.forEach((chapter) => {
+    const number = chapter.attributes?.chapter;
+    const key = number || chapter.id;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueChapters.push(chapter);
+    }
+  });
+
+  if (!uniqueChapters.length) {
     chapterListEl.innerHTML = `
       <p class="status-msg">
-        No English chapters available.
+        No chapters are currently available to read inside Panelly.
       </p>
     `;
 
     return;
   }
 
-  chapters.forEach((chapter) => {
+  uniqueChapters.forEach((chapter) => {
     const chapterNumber = chapter.attributes?.chapter;
     const chapterTitle = chapter.attributes?.title;
 
@@ -253,7 +270,7 @@ function renderChapters(chapters) {
     );
 
     const groupName =
-      group?.attributes?.name || "Unknown group";
+      group?.attributes?.name || "Community release";
 
     const chapterLabel = chapterNumber
       ? `Chapter ${chapterNumber}`
@@ -263,33 +280,22 @@ function renderChapters(chapters) {
       ? `${chapterLabel} — ${chapterTitle}`
       : chapterLabel;
 
-    const externalUrl = safeExternalUrl(
-      chapter.attributes?.externalUrl
-    );
-
     const row = document.createElement("a");
     const label = document.createElement("span");
     const source = document.createElement("span");
 
     row.className = "chapter-row";
 
+    row.href =
+      `reader.html?chapterId=${encodeURIComponent(
+        chapter.id
+      )}`;
+
     label.className = "chapter-label";
     label.textContent = fullLabel;
 
     source.className = "chapter-group";
-
-    if (externalUrl) {
-      row.href = externalUrl;
-      row.target = "_blank";
-      row.rel = "noopener noreferrer";
-
-      source.textContent = "Official site";
-    } else {
-      row.href =
-        `reader.html?chapterId=${encodeURIComponent(chapter.id)}`;
-
-      source.textContent = groupName;
-    }
+    source.textContent = `${groupName} →`;
 
     row.appendChild(label);
     row.appendChild(source);
