@@ -1,5 +1,3 @@
-const API_BASE = "https://api.mangadex.org";
-const COVER_BASE = "https://uploads.mangadex.org/covers";
 const CONTENT_RATING = ["safe", "suggestive"];
 
 const heroEl = document.getElementById("hero");
@@ -10,17 +8,15 @@ const searchInput = document.getElementById("searchInput");
 const genreFilterEl = document.getElementById("genreFilter");
 
 async function apiFetch(pathAndQuery) {
-  try {
-    const res = await fetch(
-      `/api/mangadex?path=${encodeURIComponent(pathAndQuery)}`
-    );
+  const res = await fetch(
+    `/api/mangadex?path=${encodeURIComponent(pathAndQuery)}`
+  );
 
-    if (res.ok) {
-      return res;
-    }
-  } catch (err) {}
+  if (!res.ok) {
+    throw new Error(`MangaDex request failed: ${res.status}`);
+  }
 
-  return fetch(`${API_BASE}${pathAndQuery}`);
+  return res;
 }
 
 function buildQuery(params) {
@@ -58,58 +54,55 @@ function escapeHtml(value) {
 }
 
 function getTitle(manga) {
-  const titles = manga.attributes.title || {};
+  const titles = manga.attributes?.title || {};
 
   return titles.en || Object.values(titles)[0] || "Untitled";
 }
 
 function getDescription(manga) {
-  const descriptions = manga.attributes.description || {};
+  const descriptions = manga.attributes?.description || {};
 
   return descriptions.en || Object.values(descriptions)[0] || "";
 }
 
-function getDirectCoverUrl(manga, size = 256) {
-  const coverRel = manga.relationships?.find(
+function getCoverFile(manga) {
+  const cover = manga.relationships?.find(
     (relationship) => relationship.type === "cover_art"
   );
 
-  const fileName = coverRel?.attributes?.fileName;
+  return cover?.attributes?.fileName || "";
+}
+
+function getCoverUrl(manga, size = 256) {
+  const fileName = getCoverFile(manga);
 
   if (!fileName) {
     return "";
   }
 
-  return `${COVER_BASE}/${manga.id}/${fileName}.${size}.jpg`;
+  const directUrl =
+    `https://uploads.mangadex.org/covers/${manga.id}/${fileName}.${size}.jpg`;
+
+  return `/api/proxy-image?url=${encodeURIComponent(directUrl)}`;
 }
 
-function proxyImageUrl(url) {
-  if (!url) {
-    return "";
+function createCoverImage(manga, size) {
+  const img = document.createElement("img");
+
+  img.alt = `${getTitle(manga)} cover`;
+  img.loading = "lazy";
+
+  const cover = getCoverUrl(manga, size);
+
+  if (cover) {
+    img.src = cover;
   }
-
-  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-}
-
-function loadCoverImage(img, directUrl) {
-  if (!directUrl) {
-    img.removeAttribute("src");
-    return;
-  }
-
-  let triedDirect = false;
 
   img.addEventListener("error", () => {
-    if (triedDirect) {
-      return;
-    }
-
-    triedDirect = true;
-    img.referrerPolicy = "no-referrer";
-    img.src = directUrl;
+    img.style.opacity = "0.25";
   });
 
-  img.src = proxyImageUrl(directUrl);
+  return img;
 }
 
 let genreTagsCache = null;
@@ -120,18 +113,15 @@ async function fetchGenreTags() {
   }
 
   const res = await apiFetch("/manga/tag");
-
-  if (!res.ok) {
-    throw new Error("Failed to load genre tags");
-  }
-
   const json = await res.json();
 
-  genreTagsCache = json.data
-    .filter((tag) => tag.attributes.group === "genre")
+  genreTagsCache = (json.data || [])
+    .filter((tag) => tag.attributes?.group === "genre")
     .map((tag) => ({
       id: tag.id,
-      name: tag.attributes.name.en || Object.values(tag.attributes.name)[0],
+      name:
+        tag.attributes?.name?.en ||
+        Object.values(tag.attributes?.name || {})[0],
     }))
     .filter((tag) => tag.name)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -152,7 +142,7 @@ async function populateGenreFilter() {
       genreFilterEl.appendChild(option);
     });
   } catch (err) {
-    console.error("Couldn't load genre list:", err);
+    console.error("Genre error:", err);
   }
 }
 
@@ -167,6 +157,7 @@ async function fetchManga({ title, tagId } = {}) {
 
   if (title) {
     params.title = title;
+    params["order[relevance]"] = "desc";
   } else {
     params["order[followedCount]"] = "desc";
   }
@@ -176,13 +167,7 @@ async function fetchManga({ title, tagId } = {}) {
   }
 
   const query = buildQuery(params);
-
   const res = await apiFetch(`/manga?${query}`);
-
-  if (!res.ok) {
-    throw new Error(`Failed to load manga: ${res.status}`);
-  }
-
   const json = await res.json();
 
   return Array.isArray(json.data) ? json.data : [];
@@ -191,15 +176,21 @@ async function fetchManga({ title, tagId } = {}) {
 function renderHero(manga) {
   if (!manga) {
     heroEl.style.backgroundImage = "none";
-    heroEl.style.backgroundColor = "var(--ink)";
-    heroEl.innerHTML = "";
+    heroEl.innerHTML = `
+      <div class="hero-content">
+        <h1 class="hero-title">Panelly</h1>
+        <p class="hero-desc">Browse and read manga online.</p>
+      </div>
+    `;
+
     return;
   }
 
-  const directCover = getDirectCoverUrl(manga, 512);
-  const cover = proxyImageUrl(directCover);
+  const cover = getCoverUrl(manga, 512);
 
-  heroEl.style.backgroundImage = cover ? `url("${cover}")` : "none";
+  heroEl.style.backgroundImage = cover
+    ? `url("${cover}")`
+    : "none";
 
   heroEl.innerHTML = `
     <div class="hero-content">
@@ -218,7 +209,7 @@ function renderGrid(mangaList) {
   if (!mangaList.length) {
     gridEl.innerHTML = `
       <p class="status-msg">
-        No readable English manga found.
+        No manga found.
       </p>
     `;
 
@@ -226,28 +217,21 @@ function renderGrid(mangaList) {
   }
 
   mangaList.forEach((manga) => {
-    const card = document.createElement("div");
-    const img = document.createElement("img");
+    const card = document.createElement("article");
+    const img = createCoverImage(manga, 256);
     const title = document.createElement("div");
 
     card.className = "manga-card";
-    card.dataset.mangaId = manga.id;
-
-    img.alt = `${getTitle(manga)} cover`;
-    img.loading = "lazy";
 
     title.className = "card-title";
     title.textContent = getTitle(manga);
-
-    const directCover = getDirectCoverUrl(manga, 256);
-
-    loadCoverImage(img, directCover);
 
     card.appendChild(img);
     card.appendChild(title);
 
     card.addEventListener("click", () => {
-      window.location.href = `detail.html?id=${encodeURIComponent(manga.id)}`;
+      window.location.href =
+        `detail.html?id=${encodeURIComponent(manga.id)}`;
     });
 
     gridEl.appendChild(card);
@@ -267,18 +251,20 @@ function showStatus(message) {
 
 async function runView() {
   const term = searchInput.value.trim();
-  const tagId = genreFilterEl.value || null;
+  const tagId = genreFilterEl.value || "";
 
-  const selectedGenreName = tagId
-    ? genreFilterEl.options[genreFilterEl.selectedIndex].textContent
-    : null;
+  const selectedGenre = tagId
+    ? genreFilterEl.options[
+        genreFilterEl.selectedIndex
+      ].textContent
+    : "";
 
-  if (term && selectedGenreName) {
-    gridTitleEl.textContent = `"${term}" in ${selectedGenreName}`;
+  if (term && selectedGenre) {
+    gridTitleEl.textContent = `"${term}" in ${selectedGenre}`;
   } else if (term) {
     gridTitleEl.textContent = `Results for "${term}"`;
-  } else if (selectedGenreName) {
-    gridTitleEl.textContent = selectedGenreName;
+  } else if (selectedGenre) {
+    gridTitleEl.textContent = selectedGenre;
   } else {
     gridTitleEl.textContent = "Trending now";
   }
@@ -288,7 +274,7 @@ async function runView() {
   try {
     const results = await fetchManga({
       title: term || undefined,
-      tagId,
+      tagId: tagId || undefined,
     });
 
     if (!term && !tagId) {
@@ -298,14 +284,12 @@ async function runView() {
     renderGrid(results);
   } catch (err) {
     console.error(err);
-
-    showStatus("Something went wrong. Try again.");
+    showStatus("Couldn't load manga. Please try again.");
   }
 }
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
-
   runView();
 });
 
@@ -313,8 +297,8 @@ genreFilterEl.addEventListener("change", () => {
   runView();
 });
 
-const urlParams = new URLSearchParams(window.location.search);
-const initialSearch = urlParams.get("search");
+const params = new URLSearchParams(window.location.search);
+const initialSearch = params.get("search");
 
 if (initialSearch) {
   searchInput.value = initialSearch;
