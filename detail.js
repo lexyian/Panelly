@@ -1203,7 +1203,7 @@ function updateReadButton() {
       "noopener noreferrer";
 
     button.textContent =
-      "READ OFFICIAL RELEASE ↗";
+      "READ OFFICIAL RELEASE →";
 
     button.classList.remove(
       "disabled"
@@ -1289,7 +1289,7 @@ function createChapterRow(
     <span class="chapter-read">
       ${
         externalUrl
-          ? "OFFICIAL ↗"
+          ? "OFFICIAL →"
           : "READ →"
       }
     </span>
