@@ -126,12 +126,30 @@ a { color: inherit; }
 
 .rail { padding: 28px 24px 60px; }
 
-.rail-header { margin-bottom: 16px; }
+.rail-header {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
 .rail-header h2 {
   font-family: 'Archivo Black', sans-serif;
   font-size: 18px;
   margin: 0;
+}
+
+.genre-filter {
+  padding: 7px 12px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .manga-grid {
@@ -187,8 +205,192 @@ a { color: inherit; }
 
 .site-footer a { color: var(--accent); text-decoration: none; }
 
+.back-link {
+  display: inline-block;
+  margin: 18px 24px 0;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.back-link:hover { color: var(--ink); }
+
+.detail {
+  display: flex;
+  gap: 24px;
+  padding: 20px 24px 10px;
+  flex-wrap: wrap;
+}
+
+.detail-cover {
+  width: 220px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: var(--gutter) solid var(--ink);
+  flex-shrink: 0;
+  background: #ddd;
+}
+
+.detail-info { flex: 1; min-width: 240px; }
+
+.detail-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(24px, 4vw, 34px);
+  margin: 0 0 8px;
+  line-height: 1.1;
+}
+
+.detail-meta {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--ink);
+  color: var(--text-light);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-radius: 20px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 20px;
+  background: var(--panel);
+}
+
+.detail-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  max-width: 70ch;
+}
+
+.chapters { padding: 10px 24px 60px; }
+
+.chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  border: var(--gutter) solid var(--ink);
+}
+
+.chapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.chapter-row:hover { background: #f1f1ee; }
+
+.chapter-label { font-weight: 600; }
+
+.chapter-group {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.reader-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--ink);
+  color: var(--text-light);
+}
+
+.reader-bar .back-link {
+  margin: 0;
+  color: var(--text-light);
+}
+
+.reader-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.reader-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 0 40px;
+}
+
+.reader-nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  margin: 14px 0;
+}
+
+.nav-btn {
+  padding: 9px 18px;
+  background: var(--ink);
+  color: var(--text-light);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: var(--radius);
+}
+
+.nav-btn-disabled {
+  background: #ccc;
+  color: #888;
+  pointer-events: none;
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.manga-page {
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+  display: block;
+  background: #ddd;
+}
+
 @media (max-width: 480px) {
   .site-header { padding: 14px 16px; }
   .rail { padding: 20px 16px 40px; }
   .manga-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .detail { flex-direction: column; padding: 16px 16px 6px; }
+  .detail-cover { width: 150px; }
+  .chapters { padding: 6px 16px 40px; }
+  .reader-bar { padding: 12px 14px; }
+  .reader-nav { padding: 0 12px; }
 }

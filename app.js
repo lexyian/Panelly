@@ -7,6 +7,15 @@ const gridEl = document.getElementById("mangaGrid");
 const gridTitleEl = document.getElementById("gridTitle");
 const searchForm = document.getElementById("searchForm");
 const searchInput = document.getElementById("searchInput");
+const genreFilterEl = document.getElementById("genreFilter");
+
+async function apiFetch(pathAndQuery) {
+  try {
+    const res = await fetch(`/api/mangadex?path=${encodeURIComponent(pathAndQuery)}`);
+    if (res.ok) return res;
+  } catch (err) {}
+  return fetch(`${API_BASE}${pathAndQuery}`);
+}
 
 function buildQuery(params) {
   const parts = [];
@@ -37,28 +46,53 @@ function getCoverUrl(manga, size = 256) {
   return `${COVER_BASE}/${manga.id}/${fileName}.${size}.jpg`;
 }
 
-async function fetchTrendingManga() {
-  const query = buildQuery({
-    limit: 20,
-    "order[followedCount]": "desc",
-    includes: ["cover_art"],
-    contentRating: CONTENT_RATING,
-  });
-  const res = await fetch(`${API_BASE}/manga?${query}`);
-  if (!res.ok) throw new Error("Failed to load trending manga");
+let genreTagsCache = null;
+
+async function fetchGenreTags() {
+  if (genreTagsCache) return genreTagsCache;
+  const res = await apiFetch(`/manga/tag`);
   const json = await res.json();
-  return json.data;
+  genreTagsCache = json.data
+    .filter((t) => t.attributes.group === "genre")
+    .map((t) => ({ id: t.id, name: t.attributes.name.en }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return genreTagsCache;
 }
 
-async function searchManga(term) {
-  const query = buildQuery({
-    title: term,
+async function populateGenreFilter() {
+  try {
+    const tags = await fetchGenreTags();
+    tags.forEach((tag) => {
+      const opt = document.createElement("option");
+      opt.value = tag.id;
+      opt.textContent = tag.name;
+      genreFilterEl.appendChild(opt);
+    });
+  } catch (err) {
+    console.error("Couldn't load genre list:", err);
+  }
+}
+
+async function fetchManga({ title, tagId } = {}) {
+  const params = {
     limit: 20,
     includes: ["cover_art"],
     contentRating: CONTENT_RATING,
-  });
-  const res = await fetch(`${API_BASE}/manga?${query}`);
-  if (!res.ok) throw new Error("Search failed");
+  };
+
+  if (title) {
+    params.title = title;
+  } else {
+    params["order[followedCount]"] = "desc";
+  }
+
+  if (tagId) {
+    params.includedTags = [tagId];
+  }
+
+  const query = buildQuery(params);
+  const res = await apiFetch(`/manga?${query}`);
+  if (!res.ok) throw new Error("Failed to load manga");
   const json = await res.json();
   return json.data;
 }
@@ -74,7 +108,7 @@ function renderHero(manga) {
     <div class="hero-content">
       <h1 class="hero-title">${getTitle(manga)}</h1>
       <p class="hero-desc">${getDescription(manga)}</p>
-      <a class="hero-cta" href="#" data-manga-id="${manga.id}">View details</a>
+      <a class="hero-cta" href="detail.html?id=${manga.id}">View details</a>
     </div>
   `;
 }
@@ -99,7 +133,7 @@ function renderGrid(mangaList) {
     `;
 
     card.addEventListener("click", () => {
-      console.log("Open detail page for manga:", manga.id);
+      window.location.href = `detail.html?id=${manga.id}`;
     });
 
     gridEl.appendChild(card);
@@ -110,33 +144,46 @@ function showStatus(message) {
   gridEl.innerHTML = `<p class="status-msg">${message}</p>`;
 }
 
-async function loadTrending() {
-  gridTitleEl.textContent = "Trending now";
-  showStatus("Loading manga…");
+async function runView() {
+  const term = searchInput.value.trim();
+  const tagId = genreFilterEl.value || null;
+  const selectedGenreName = tagId
+    ? genreFilterEl.options[genreFilterEl.selectedIndex].textContent
+    : null;
+
+  if (term && selectedGenreName) {
+    gridTitleEl.textContent = `"${term}" in ${selectedGenreName}`;
+  } else if (term) {
+    gridTitleEl.textContent = `Results for "${term}"`;
+  } else if (selectedGenreName) {
+    gridTitleEl.textContent = selectedGenreName;
+  } else {
+    gridTitleEl.textContent = "Trending now";
+  }
+
+  showStatus(term || tagId ? "Searching…" : "Loading manga…");
+
   try {
-    const results = await fetchTrendingManga();
-    renderHero(results[0]);
+    const results = await fetchManga({ title: term || undefined, tagId });
+    if (!term && !tagId) renderHero(results[0]);
     renderGrid(results);
   } catch (err) {
     console.error(err);
-    showStatus("Something went wrong loading manga. Try refreshing.");
+    showStatus("Something went wrong. Try again.");
   }
 }
 
-searchForm.addEventListener("submit", async (e) => {
+searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  const term = searchInput.value.trim();
-  if (!term) return;
-
-  gridTitleEl.textContent = `Results for "${term}"`;
-  showStatus("Searching…");
-  try {
-    const results = await searchManga(term);
-    renderGrid(results);
-  } catch (err) {
-    console.error(err);
-    showStatus("Search failed. Try again.");
-  }
+  runView();
 });
 
-loadTrending();
+genreFilterEl.addEventListener("change", () => {
+  runView();
+});
+
+const urlParams = new URLSearchParams(window.location.search);
+const initialSearch = urlParams.get("search");
+if (initialSearch) searchInput.value = initialSearch;
+
+populateGenreFilter().then(runView);

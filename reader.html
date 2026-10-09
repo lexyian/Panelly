@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panelly — Reader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="reader-bar">
+    <a class="back-link" id="backLink" href="index.html">← Back</a>
+    <span class="reader-title" id="readerTitle">Loading…</span>
+    <span></span>
+  </header>
+
+  <main class="reader-main">
+    <div class="reader-nav" id="navTop">
+      <a class="nav-btn" id="prevBtnTop">← Previous</a>
+      <a class="nav-btn" id="nextBtnTop">Next →</a>
+    </div>
+
+    <div class="page-list" id="pageList">
+      <p class="status-msg">Loading pages…</p>
+    </div>
+
+    <div class="reader-nav" id="navBottom">
+      <a class="nav-btn" id="prevBtnBottom">← Previous</a>
+      <a class="nav-btn" id="nextBtnBottom">Next →</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Manga data and cover art provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>.</p>
+  </footer>
+
+  <script src="reader.js"></script>
+</body>
+</html>
