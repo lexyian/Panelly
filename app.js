@@ -821,9 +821,6 @@ if (initialSearch) {
 renderContinueReading();
 renderShelf();
 
-Promise.all([
-  populateGenres(),
-  loadFresh(),
-]).then(() => {
-  loadBrowse();
-});
+loadBrowse();
+loadFresh();
+populateGenres();
