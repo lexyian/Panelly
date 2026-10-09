@@ -1,5 +1,3 @@
-const API_BASE = "https://api.mangadex.org";
-const COVER_BASE = "https://uploads.mangadex.org/covers";
 const CONTENT_RATING = ["safe", "suggestive"];
 
 const detailEl = document.getElementById("detail");
@@ -8,17 +6,15 @@ const searchForm = document.getElementById("searchForm");
 const searchInput = document.getElementById("searchInput");
 
 async function apiFetch(pathAndQuery) {
-  try {
-    const res = await fetch(
-      `/api/mangadex?path=${encodeURIComponent(pathAndQuery)}`
-    );
+  const res = await fetch(
+    `/api/mangadex?path=${encodeURIComponent(pathAndQuery)}`
+  );
 
-    if (res.ok) {
-      return res;
-    }
-  } catch (err) {}
+  if (!res.ok) {
+    throw new Error(`MangaDex request failed: ${res.status}`);
+  }
 
-  return fetch(`${API_BASE}${pathAndQuery}`);
+  return res;
 }
 
 function buildQuery(params) {
@@ -60,13 +56,13 @@ function getMangaId() {
 }
 
 function getTitle(manga) {
-  const titles = manga.attributes.title || {};
+  const titles = manga.attributes?.title || {};
 
   return titles.en || Object.values(titles)[0] || "Untitled";
 }
 
 function getDescription(manga) {
-  const descriptions = manga.attributes.description || {};
+  const descriptions = manga.attributes?.description || {};
 
   return (
     descriptions.en ||
@@ -75,52 +71,44 @@ function getDescription(manga) {
   );
 }
 
-function getDirectCoverUrl(manga, size = 512) {
-  const coverRel = manga.relationships?.find(
+function formatDescription(text) {
+  let value = escapeHtml(text);
+
+  value = value.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+
+  value = value.replace(
+    /\*\*([^*]+)\*\*/g,
+    "<strong>$1</strong>"
+  );
+
+  value = value.replace(/\n/g, "<br>");
+
+  return value;
+}
+
+function getCoverUrl(manga, size = 512) {
+  const cover = manga.relationships?.find(
     (relationship) => relationship.type === "cover_art"
   );
 
-  const fileName = coverRel?.attributes?.fileName;
+  const fileName = cover?.attributes?.fileName;
 
   if (!fileName) {
     return "";
   }
 
-  return `${COVER_BASE}/${manga.id}/${fileName}.${size}.jpg`;
-}
+  const directUrl =
+    `https://uploads.mangadex.org/covers/${manga.id}/${fileName}.${size}.jpg`;
 
-function proxyImageUrl(url) {
-  if (!url) {
-    return "";
-  }
-
-  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-}
-
-function loadCoverImage(img, directUrl) {
-  if (!directUrl) {
-    img.removeAttribute("src");
-    return;
-  }
-
-  let triedDirect = false;
-
-  img.addEventListener("error", () => {
-    if (triedDirect) {
-      return;
-    }
-
-    triedDirect = true;
-    img.referrerPolicy = "no-referrer";
-    img.src = directUrl;
-  });
-
-  img.src = proxyImageUrl(directUrl);
+  return `/api/proxy-image?url=${encodeURIComponent(directUrl)}`;
 }
 
 function getCreators(manga) {
   const names = manga.relationships
-    .filter(
+    ?.filter(
       (relationship) =>
         relationship.type === "author" ||
         relationship.type === "artist"
@@ -128,15 +116,15 @@ function getCreators(manga) {
     .map((relationship) => relationship.attributes?.name)
     .filter(Boolean);
 
-  return [...new Set(names)].join(", ") || "Unknown creator";
+  return [...new Set(names || [])].join(", ") || "Unknown creator";
 }
 
 function getTags(manga) {
-  return manga.attributes.tags
+  return (manga.attributes?.tags || [])
     .map(
       (tag) =>
-        tag.attributes.name.en ||
-        Object.values(tag.attributes.name || {})[0]
+        tag.attributes?.name?.en ||
+        Object.values(tag.attributes?.name || {})[0]
     )
     .filter(Boolean);
 }
@@ -162,11 +150,9 @@ async function fetchMangaDetail(id) {
     includes: ["cover_art", "author", "artist"],
   });
 
-  const res = await apiFetch(`/manga/${encodeURIComponent(id)}?${query}`);
-
-  if (!res.ok) {
-    throw new Error(`Failed to load manga: ${res.status}`);
-  }
+  const res = await apiFetch(
+    `/manga/${encodeURIComponent(id)}?${query}`
+  );
 
   const json = await res.json();
 
@@ -186,10 +172,6 @@ async function fetchChapters(id) {
     `/manga/${encodeURIComponent(id)}/feed?${query}`
   );
 
-  if (!res.ok) {
-    throw new Error(`Failed to load chapters: ${res.status}`);
-  }
-
   const json = await res.json();
 
   return Array.isArray(json.data) ? json.data : [];
@@ -204,28 +186,42 @@ function renderDetail(manga) {
   img.className = "detail-cover";
   img.alt = `${getTitle(manga)} cover`;
 
-  const directCover = getDirectCoverUrl(manga);
+  const cover = getCoverUrl(manga);
 
-  loadCoverImage(img, directCover);
+  if (cover) {
+    img.src = cover;
+  }
 
-  const status = manga.attributes.status || "unknown";
+  img.addEventListener("error", () => {
+    img.style.opacity = "0.25";
+  });
+
+  const status = manga.attributes?.status || "unknown";
   const tags = getTags(manga);
 
   info.className = "detail-info";
 
   info.innerHTML = `
     <h1 class="detail-title">${escapeHtml(getTitle(manga))}</h1>
+
     <p class="detail-meta">
       ${escapeHtml(getCreators(manga))}
       &middot;
       <span class="status-pill">${escapeHtml(status)}</span>
     </p>
+
     <div class="tag-list">
       ${tags
-        .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
+        .map(
+          (tag) =>
+            `<span class="tag">${escapeHtml(tag)}</span>`
+        )
         .join("")}
     </div>
-    <p class="detail-desc">${escapeHtml(getDescription(manga))}</p>
+
+    <p class="detail-desc">
+      ${formatDescription(getDescription(manga))}
+    </p>
   `;
 
   detailEl.appendChild(img);
@@ -240,7 +236,7 @@ function renderChapters(chapters) {
   if (!chapters.length) {
     chapterListEl.innerHTML = `
       <p class="status-msg">
-        No English chapters available yet.
+        No English chapters available.
       </p>
     `;
 
@@ -248,43 +244,55 @@ function renderChapters(chapters) {
   }
 
   chapters.forEach((chapter) => {
-    const num = chapter.attributes.chapter;
-    const title = chapter.attributes.title;
+    const chapterNumber = chapter.attributes?.chapter;
+    const chapterTitle = chapter.attributes?.title;
 
-    const groupRel = chapter.relationships?.find(
-      (relationship) => relationship.type === "scanlation_group"
+    const group = chapter.relationships?.find(
+      (relationship) =>
+        relationship.type === "scanlation_group"
     );
 
-    const groupName = groupRel?.attributes?.name || "Unknown group";
+    const groupName =
+      group?.attributes?.name || "Unknown group";
 
-    const label = num ? `Chapter ${num}` : "Oneshot";
-    const subtitle = title ? ` — ${title}` : "";
+    const chapterLabel = chapterNumber
+      ? `Chapter ${chapterNumber}`
+      : "Oneshot";
 
-    const externalUrl = safeExternalUrl(chapter.attributes.externalUrl);
+    const fullLabel = chapterTitle
+      ? `${chapterLabel} — ${chapterTitle}`
+      : chapterLabel;
+
+    const externalUrl = safeExternalUrl(
+      chapter.attributes?.externalUrl
+    );
 
     const row = document.createElement("a");
+    const label = document.createElement("span");
+    const source = document.createElement("span");
 
     row.className = "chapter-row";
+
+    label.className = "chapter-label";
+    label.textContent = fullLabel;
+
+    source.className = "chapter-group";
 
     if (externalUrl) {
       row.href = externalUrl;
       row.target = "_blank";
       row.rel = "noopener noreferrer";
+
+      source.textContent = "Official site";
     } else {
-      row.href = `reader.html?chapterId=${encodeURIComponent(chapter.id)}`;
+      row.href =
+        `reader.html?chapterId=${encodeURIComponent(chapter.id)}`;
+
+      source.textContent = groupName;
     }
 
-    const labelEl = document.createElement("span");
-    const groupEl = document.createElement("span");
-
-    labelEl.className = "chapter-label";
-    labelEl.textContent = `${label}${subtitle}`;
-
-    groupEl.className = "chapter-group";
-    groupEl.textContent = externalUrl ? "Official site" : groupName;
-
-    row.appendChild(labelEl);
-    row.appendChild(groupEl);
+    row.appendChild(label);
+    row.appendChild(source);
 
     chapterListEl.appendChild(row);
   });
@@ -296,32 +304,29 @@ async function init() {
   if (!id) {
     detailEl.innerHTML = `
       <p class="status-msg">
-        No manga selected. Go back and pick one.
+        No manga selected.
       </p>
     `;
 
     chapterListEl.innerHTML = "";
-
     return;
   }
 
   try {
     const manga = await fetchMangaDetail(id);
-
     renderDetail(manga);
   } catch (err) {
     console.error(err);
 
     detailEl.innerHTML = `
       <p class="status-msg">
-        Couldn't load this manga. Try going back and selecting it again.
+        Couldn't load this manga.
       </p>
     `;
   }
 
   try {
     const chapters = await fetchChapters(id);
-
     renderChapters(chapters);
   } catch (err) {
     console.error(err);
@@ -343,7 +348,8 @@ searchForm.addEventListener("submit", (event) => {
     return;
   }
 
-  window.location.href = `index.html?search=${encodeURIComponent(term)}`;
+  window.location.href =
+    `index.html?search=${encodeURIComponent(term)}`;
 });
 
 init();
