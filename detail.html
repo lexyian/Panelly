@@ -2,120 +2,187 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#111111">
-<link rel="icon" type="image/png" href="favicon.png">
-  <title>Series File — Panelly</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Series — Panelly</title>
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="icon"
+    type="image/png"
+    href="favicon.png"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet"
   >
 
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="detail.css">
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
 
-<body class="detail-page">
+<body>
 
   <header class="site-header">
-    <a class="brand" href="index.html">
-  <img src="panelly-logo.png" alt="Panelly" class="brand-logo-full">
-</a>
 
-    <nav class="desktop-nav">
-      <a href="index.html">Home</a>
-      <a href="index.html#browseSection">Browse</a>
-      <a href="index.html#shelfSection">My Shelf</a>
-    </nav>
+    <a
+      class="brand"
+      href="index.html"
+    >
+      <span class="brand-mark">
+        <span>P</span>
+      </span>
 
-    <form class="search-form" id="searchForm">
-      <input
-        type="search"
-        id="searchInput"
-        placeholder="Search a title..."
-        autocomplete="off"
-      >
-      <button type="submit">Search</button>
-    </form>
-  </header>
-
-  <main class="series-shell">
-
-    <a class="series-back" href="index.html">
-      ← Back to panels
+      <span class="brand-copy">
+        <strong>Panelly</strong>
+        <small>READ BETWEEN THE LINES.</small>
+      </span>
     </a>
 
-    <section class="series-file" id="detail">
-      <div class="series-loading">
-        Opening series file...
+    <form
+      class="header-search"
+      id="searchForm"
+    >
+      <input
+        id="searchInput"
+        type="search"
+        placeholder="Search another series..."
+      >
+
+      <button type="submit">
+        ↗
+      </button>
+    </form>
+
+    <nav class="desktop-nav">
+      <a href="index.html">
+        Home
+      </a>
+
+      <a href="index.html#mainPanels">
+        Browse
+      </a>
+
+      <a href="index.html#shelfSection">
+        Shelf
+      </a>
+    </nav>
+
+  </header>
+
+  <main class="detail-main">
+
+    <section class="series-dossier">
+
+      <span class="dossier-tab">
+        SERIES DOSSIER
+      </span>
+
+      <div id="detail">
+        <div class="loading-block large">
+          <span>OPENING SERIES FILE...</span>
+        </div>
       </div>
+
     </section>
 
-    <section class="chapter-zone">
-      <div class="chapter-zone-heading">
+    <section class="chapter-section">
+
+      <div class="chapter-head">
+
         <div>
-          <p class="section-kicker">READ ON PANELLY</p>
-          <h2>Chapters</h2>
+          <span>
+            READING RECORD
+          </span>
+
+          <h2>
+            Chapter Strip
+          </h2>
         </div>
 
-        <span class="chapter-count" id="chapterCount">
-          —
-        </span>
+        <div id="chapterCount">
+          CHECKING...
+        </div>
+
       </div>
 
-      <div class="chapter-list-new" id="chapterList">
-        <div class="chapter-loading">
-          Checking readable chapters...
+      <div
+        class="chapter-list"
+        id="chapterList"
+      >
+        <div class="status-msg">
+          Checking available chapters...
         </div>
       </div>
+
     </section>
 
   </main>
 
   <footer class="site-footer">
+
     <div class="footer-brand">
-      <span class="footer-logo">Panelly</span>
-      <span>Find your next panel.</span>
+
+      <span class="brand-mark mini">
+        <span>P</span>
+      </span>
+
+      <div>
+        <strong>Panelly</strong>
+        <p>
+          Every story starts with a panel.
+        </p>
+      </div>
+
     </div>
 
-    <p>
-      Manga information and artwork provided by
-      <a
-        href="https://mangadex.org"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        MangaDex
-      </a>.
+    <p class="footer-note">
+      Availability differs between series and chapter providers.
     </p>
+
+    <span class="footer-page">
+      SERIES FILE
+    </span>
+
   </footer>
 
   <nav class="mobile-nav">
+
     <a href="index.html">
       <span>⌂</span>
-      <small>Home</small>
+      Home
     </a>
 
-    <a href="index.html#browseSection">
-      <span>⌕</span>
-      <small>Browse</small>
-    </a>
-
-    <a href="#chapterList">
-      <span>▤</span>
-      <small>Chapters</small>
+    <a href="index.html#mainPanels">
+      <span>▦</span>
+      Browse
     </a>
 
     <a href="index.html#shelfSection">
-      <span>▣</span>
-      <small>Shelf</small>
+      <span>▱</span>
+      Shelf
     </a>
+
   </nav>
 
   <script src="detail.js"></script>
+
 </body>
 </html>
