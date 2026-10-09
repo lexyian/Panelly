@@ -312,7 +312,7 @@ function renderHero(manga) {
           )}"
         >
           OPEN SERIES FILE
-          <b>↗</b>
+          <b>→</b>
         </a>
 
         <div class="feature-stat">
