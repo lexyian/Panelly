@@ -64,28 +64,18 @@ img {
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: var(--white);
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.brand-logo {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
+.brand-logo-full {
+  height: 48px;
+  width: auto;
   display: block;
+  object-fit: contain;
 }
-
-.brand-name {
-  font-family: "Archivo Black", sans-serif;
-  font-size: 23px;
-  letter-spacing: -0.6px;
-  color: var(--white);
-}
-
 .desktop-nav {
   display: flex;
   align-items: center;
@@ -973,13 +963,8 @@ img {
 }
 
 @media (max-width: 680px) {
-  .brand-logo {
-    width: 34px;
-    height: 34px;
-  }
-
-  .brand-name {
-    font-size: 20px;
+  .brand-logo-full {
+    height: 38px;
   }
 }
 
