@@ -822,5 +822,37 @@ renderContinueReading();
 renderShelf();
 
 loadBrowse();
-loadFresh();
-populateGenres();
+
+const idleLoad =
+  window.requestIdleCallback ||
+  function (callback) {
+    setTimeout(callback, 1200);
+  };
+
+idleLoad(() => {
+  populateGenres();
+});
+
+let freshLoaded = false;
+
+const freshSectionEl =
+  document.getElementById("freshSection");
+
+const freshObserver =
+  new IntersectionObserver(
+    (entries) => {
+      if (
+        entries[0].isIntersecting &&
+        !freshLoaded
+      ) {
+        freshLoaded = true;
+        loadFresh();
+        freshObserver.disconnect();
+      }
+    },
+    {
+      rootMargin: "500px",
+    }
+  );
+
+freshObserver.observe(freshSectionEl);
