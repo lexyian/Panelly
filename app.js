@@ -182,7 +182,7 @@ function imageMarkup(url, alt) {
 
   return `<img src="${escapeHtml(
     url
-  )}" alt="${escapeHtml(alt)}" loading="lazy">`;
+  )}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">`;
 }
 
 async function fetchGenreTags() {
@@ -707,7 +707,7 @@ async function loadBrowse() {
     const mangaList = await fetchManga({
       title: term || undefined,
       tagId: tagId || undefined,
-      limit: 18,
+      limit: 12,
       order: "followedCount",
     });
 
@@ -734,7 +734,7 @@ async function loadBrowse() {
 async function loadFresh() {
   try {
     const mangaList = await fetchManga({
-      limit: 12,
+      limit: 8,
       order: "latestUploadedChapter",
     });
 
