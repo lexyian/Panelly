@@ -1,43 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panelly — Manga Details</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+
+  <title>Series File — Panelly</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="detail.css">
 </head>
-<body>
+
+<body class="detail-page">
 
   <header class="site-header">
-    <a class="logo" href="index.html">Panelly</a>
+    <a class="brand" href="index.html">
+      <span class="brand-mark">P</span>
+      <span class="brand-name">Panelly</span>
+    </a>
+
+    <nav class="desktop-nav">
+      <a href="index.html">Home</a>
+      <a href="index.html#browseSection">Browse</a>
+      <a href="index.html#shelfSection">My Shelf</a>
+    </nav>
+
     <form class="search-form" id="searchForm">
-      <input type="text" id="searchInput" placeholder="Search manga…" autocomplete="off" />
+      <input
+        type="search"
+        id="searchInput"
+        placeholder="Search a title..."
+        autocomplete="off"
+      >
       <button type="submit">Search</button>
     </form>
   </header>
 
-  <main>
-    <a class="back-link" href="index.html">← Back to browse</a>
+  <main class="series-shell">
 
-    <section class="detail" id="detail">
-      <p class="status-msg">Loading manga details…</p>
-    </section>
+    <a class="series-back" href="index.html">
+      ← Back to panels
+    </a>
 
-    <section class="chapters">
-      <div class="rail-header">
-        <h2>Chapters</h2>
-      </div>
-      <div class="chapter-list" id="chapterList">
-        <p class="status-msg">Loading chapters…</p>
+    <section class="series-file" id="detail">
+      <div class="series-loading">
+        Opening series file...
       </div>
     </section>
+
+    <section class="chapter-zone">
+      <div class="chapter-zone-heading">
+        <div>
+          <p class="section-kicker">READ ON PANELLY</p>
+          <h2>Chapters</h2>
+        </div>
+
+        <span class="chapter-count" id="chapterCount">
+          —
+        </span>
+      </div>
+
+      <div class="chapter-list-new" id="chapterList">
+        <div class="chapter-loading">
+          Checking readable chapters...
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="site-footer">
-    <p>Manga data and cover art provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>.</p>
+    <div class="footer-brand">
+      <span class="footer-logo">Panelly</span>
+      <span>Find your next panel.</span>
+    </div>
+
+    <p>
+      Manga information and artwork provided by
+      <a
+        href="https://mangadex.org"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        MangaDex
+      </a>.
+    </p>
   </footer>
+
+  <nav class="mobile-nav">
+    <a href="index.html">
+      <span>⌂</span>
+      <small>Home</small>
+    </a>
+
+    <a href="index.html#browseSection">
+      <span>⌕</span>
+      <small>Browse</small>
+    </a>
+
+    <a href="#chapterList">
+      <span>▤</span>
+      <small>Chapters</small>
+    </a>
+
+    <a href="index.html#shelfSection">
+      <span>▣</span>
+      <small>Shelf</small>
+    </a>
+  </nav>
 
   <script src="detail.js"></script>
 </body>
