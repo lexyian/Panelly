@@ -8,8 +8,7 @@ const searchForm = document.getElementById("searchForm");
 const searchInput = document.getElementById("searchInput");
 
 let currentManga = null;
-let currentHostedChapters = [];
-let currentExternalChapters = [];
+let currentChapters = [];
 
 async function apiFetch(pathAndQuery) {
   const res = await fetch(
@@ -17,9 +16,7 @@ async function apiFetch(pathAndQuery) {
   );
 
   if (!res.ok) {
-    throw new Error(
-      `MangaDex request failed: ${res.status}`
-    );
+    throw new Error(`MangaDex request failed: ${res.status}`);
   }
 
   return res;
@@ -28,10 +25,7 @@ async function apiFetch(pathAndQuery) {
 function buildQuery(params) {
   const parts = [];
 
-  for (
-    const [key, value]
-    of Object.entries(params)
-  ) {
+  for (const [key, value] of Object.entries(params)) {
     if (
       value === undefined ||
       value === null ||
@@ -102,13 +96,15 @@ function cleanDescription(text) {
   let value = String(text || "");
 
   const markers = [
-    "\n---\n",
+    "\n---",
     "\nLinks:",
     "\n**Links:**",
-    "\n### Links"
+    "\n### Links",
+    "\nOfficial English",
+    "\nOfficial Translation"
   ];
 
-  let cutPosition = -1;
+  let cutAt = -1;
 
   markers.forEach((marker) => {
     const position =
@@ -117,18 +113,18 @@ function cleanDescription(text) {
     if (
       position !== -1 &&
       (
-        cutPosition === -1 ||
-        position < cutPosition
+        cutAt === -1 ||
+        position < cutAt
       )
     ) {
-      cutPosition = position;
+      cutAt = position;
     }
   });
 
-  if (cutPosition !== -1) {
+  if (cutAt !== -1) {
     value = value.slice(
       0,
-      cutPosition
+      cutAt
     );
   }
 
@@ -158,20 +154,6 @@ function cleanDescription(text) {
   );
 }
 
-function getTags(manga) {
-  return (
-    manga.attributes?.tags || []
-  )
-    .map(
-      (tag) =>
-        tag.attributes?.name?.en ||
-        Object.values(
-          tag.attributes?.name || {}
-        )[0]
-    )
-    .filter(Boolean);
-}
-
 function getCreators(manga) {
   const names =
     manga.relationships
@@ -190,6 +172,20 @@ function getCreators(manga) {
     [...new Set(names)].join(", ") ||
     "Unknown creator"
   );
+}
+
+function getTags(manga) {
+  return (
+    manga.attributes?.tags || []
+  )
+    .map(
+      (tag) =>
+        tag.attributes?.name?.en ||
+        Object.values(
+          tag.attributes?.name || {}
+        )[0]
+    )
+    .filter(Boolean);
 }
 
 function getCoverFile(manga) {
@@ -224,6 +220,73 @@ function getCoverUrl(
   )}`;
 }
 
+function safeExternalUrl(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url =
+      new URL(value);
+
+    if (
+      url.protocol === "https:" ||
+      url.protocol === "http:"
+    ) {
+      return url.toString();
+    }
+  } catch {}
+
+  return null;
+}
+
+async function fetchMangaDetail(id) {
+  const query =
+    buildQuery({
+      includes: [
+        "cover_art",
+        "author",
+        "artist"
+      ]
+    });
+
+  const res =
+    await apiFetch(
+      `/manga/${encodeURIComponent(id)}?${query}`
+    );
+
+  const json =
+    await res.json();
+
+  return json.data;
+}
+
+async function fetchChapters(id) {
+  const query =
+    buildQuery({
+      translatedLanguage: ["en"],
+      "order[chapter]": "asc",
+      limit: 500,
+      includes: [
+        "scanlation_group"
+      ],
+      contentRating:
+        CONTENT_RATING
+    });
+
+  const res =
+    await apiFetch(
+      `/manga/${encodeURIComponent(id)}/feed?${query}`
+    );
+
+  const json =
+    await res.json();
+
+  return Array.isArray(json.data)
+    ? json.data
+    : [];
+}
+
 function readBookmarks() {
   try {
     const stored =
@@ -250,20 +313,20 @@ function readBookmarks() {
   }
 }
 
-function writeBookmarks(items) {
+function saveBookmarks(bookmarks) {
   localStorage.setItem(
     BOOKMARK_KEY,
-    JSON.stringify(items)
+    JSON.stringify(bookmarks)
   );
 }
 
-function isBookmarked(mangaId) {
+function isBookmarked(id) {
   return readBookmarks().some(
     (item) =>
       (
         item.mangaId ||
         item.id
-      ) === mangaId
+      ) === id
   );
 }
 
@@ -272,29 +335,27 @@ function toggleBookmark() {
     return;
   }
 
-  const mangaId =
-    currentManga.id;
-
   const bookmarks =
     readBookmarks();
 
-  const existingIndex =
+  const index =
     bookmarks.findIndex(
       (item) =>
         (
           item.mangaId ||
           item.id
-        ) === mangaId
+        ) === currentManga.id
     );
 
-  if (existingIndex !== -1) {
+  if (index !== -1) {
     bookmarks.splice(
-      existingIndex,
+      index,
       1
     );
   } else {
     bookmarks.unshift({
-      mangaId,
+      mangaId:
+        currentManga.id,
       title:
         getTitle(currentManga),
       mangaTitle:
@@ -308,7 +369,7 @@ function toggleBookmark() {
     });
   }
 
-  writeBookmarks(bookmarks);
+  saveBookmarks(bookmarks);
   updateBookmarkButton();
 }
 
@@ -318,7 +379,10 @@ function updateBookmarkButton() {
       "bookmarkBtn"
     );
 
-  if (!button || !currentManga) {
+  if (
+    !button ||
+    !currentManga
+  ) {
     return;
   }
 
@@ -327,243 +391,14 @@ function updateBookmarkButton() {
       currentManga.id
     );
 
-  button.classList.toggle(
-    "saved",
-    saved
-  );
-
   button.textContent =
     saved
       ? "✓ Saved to My Shelf"
       : "+ Add to My Shelf";
-}
 
-async function fetchMangaDetail(id) {
-  const query =
-    buildQuery({
-      includes: [
-        "cover_art",
-        "author",
-        "artist"
-      ]
-    });
-
-  const res =
-    await apiFetch(
-      `/manga/${encodeURIComponent(
-        id
-      )}?${query}`
-    );
-
-  const json =
-    await res.json();
-
-  return json.data;
-}
-
-async function fetchChapters(id) {
-  const query =
-    buildQuery({
-      translatedLanguage: [
-        "en"
-      ],
-      "order[chapter]":
-        "asc",
-      limit: 500,
-      includes: [
-        "scanlation_group"
-      ],
-      contentRating:
-        CONTENT_RATING
-    });
-
-  const res =
-    await apiFetch(
-      `/manga/${encodeURIComponent(
-        id
-      )}/feed?${query}`
-    );
-
-  const json =
-    await res.json();
-
-  return Array.isArray(
-    json.data
-  )
-    ? json.data
-    : [];
-}
-
-function safeExternalUrl(value) {
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const url =
-      new URL(value);
-
-    if (
-      url.protocol === "https:" ||
-      url.protocol === "http:"
-    ) {
-      return url.toString();
-    }
-  } catch {}
-
-  return null;
-}
-
-function chapterKey(chapter) {
-  const number =
-    chapter.attributes?.chapter;
-
-  if (
-    number !== null &&
-    number !== undefined &&
-    number !== ""
-  ) {
-    return `chapter-${number}`;
-  }
-
-  return `id-${chapter.id}`;
-}
-
-function chapterNumber(chapter) {
-  const value =
-    parseFloat(
-      chapter.attributes?.chapter
-    );
-
-  return Number.isFinite(value)
-    ? value
-    : Number.MAX_SAFE_INTEGER;
-}
-
-function uniqueHostedChapters(
-  chapters
-) {
-  const map =
-    new Map();
-
-  chapters
-    .filter(
-      (chapter) =>
-        !safeExternalUrl(
-          chapter.attributes
-            ?.externalUrl
-        )
-    )
-    .forEach((chapter) => {
-      const key =
-        chapterKey(chapter);
-
-      if (!map.has(key)) {
-        map.set(
-          key,
-          chapter
-        );
-      }
-    });
-
-  return Array.from(
-    map.values()
-  ).sort(
-    (a, b) =>
-      chapterNumber(a) -
-      chapterNumber(b)
-  );
-}
-
-function externalChapters(
-  chapters
-) {
-  return chapters.filter(
-    (chapter) =>
-      safeExternalUrl(
-        chapter.attributes
-          ?.externalUrl
-      )
-  );
-}
-
-function getSourceName(urlValue) {
-  try {
-    const hostname =
-      new URL(urlValue)
-        .hostname
-        .replace(/^www\./, "");
-
-    const knownSources = {
-      "mangaplus.shueisha.co.jp":
-        "MANGA Plus",
-      "viz.com":
-        "VIZ",
-      "webtoons.com":
-        "WEBTOON",
-      "tapas.io":
-        "Tapas",
-      "pocketcomics.com":
-        "Pocket Comics",
-      "tappytoon.com":
-        "Tappytoon",
-      "comikey.com":
-        "Comikey",
-      "azuki.co":
-        "Azuki"
-    };
-
-    return (
-      knownSources[hostname] ||
-      hostname
-    );
-  } catch {
-    return "Official source";
-  }
-}
-
-function getOfficialSources(
-  chapters
-) {
-  const sources =
-    new Map();
-
-  chapters.forEach(
-    (chapter) => {
-      const url =
-        safeExternalUrl(
-          chapter.attributes
-            ?.externalUrl
-        );
-
-      if (!url) {
-        return;
-      }
-
-      let hostname;
-
-      try {
-        hostname =
-          new URL(url).hostname;
-      } catch {
-        return;
-      }
-
-      if (!sources.has(hostname)) {
-        sources.set(
-          hostname,
-          {
-            url,
-            name:
-              getSourceName(url)
-          }
-        );
-      }
-    }
-  );
-
-  return Array.from(
-    sources.values()
+  button.classList.toggle(
+    "saved",
+    saved
   );
 }
 
@@ -578,10 +413,7 @@ function renderDetail(manga) {
       getRawDescription(manga)
     );
 
-  const cover =
-    getCoverUrl(manga);
-
-  const creator =
+  const creators =
     getCreators(manga);
 
   const tags =
@@ -594,18 +426,17 @@ function renderDetail(manga) {
   const year =
     manga.attributes?.year;
 
+  const cover =
+    getCoverUrl(manga);
+
   detailEl.innerHTML = `
     <div class="series-cover-panel">
       ${
         cover
           ? `<img
-              class="series-cover"
-              src="${escapeHtml(
-                cover
-              )}"
-              alt="${escapeHtml(
-                title
-              )} cover"
+              class="detail-cover series-cover"
+              src="${escapeHtml(cover)}"
+              alt="${escapeHtml(title)} cover"
               decoding="async"
               fetchpriority="high"
             >`
@@ -619,54 +450,50 @@ function renderDetail(manga) {
       </span>
     </div>
 
-    <div class="series-info">
+    <div class="detail-info series-info">
+
       <div class="series-topline">
-        <span class="series-status">
-          ${escapeHtml(
-            status
-          )}
+
+        <span class="status-pill series-status">
+          ${escapeHtml(status)}
         </span>
 
         ${
           year
             ? `<span class="series-year">
-                ${escapeHtml(
-                  year
-                )}
+                ${escapeHtml(year)}
               </span>`
             : ""
         }
+
       </div>
 
-      <h1 class="series-title">
+      <h1 class="detail-title series-title">
         ${escapeHtml(title)}
       </h1>
 
-      <p class="series-creator">
-        ${escapeHtml(
-          creator
-        )}
+      <p class="detail-meta series-creator">
+        ${escapeHtml(creators)}
       </p>
 
-      <div class="series-tags">
+      <div class="tag-list series-tags">
         ${tags
           .slice(0, 12)
           .map(
             (tag) =>
-              `<span>${escapeHtml(
-                tag
-              )}</span>`
+              `<span class="tag">
+                ${escapeHtml(tag)}
+              </span>`
           )
           .join("")}
       </div>
 
-      <p class="series-description">
-        ${escapeHtml(
-          description
-        )}
+      <p class="detail-desc series-description">
+        ${escapeHtml(description)}
       </p>
 
       <div class="series-actions">
+
         <a
           class="series-read-btn disabled"
           id="readNowBtn"
@@ -681,79 +508,146 @@ function renderDetail(manga) {
         >
           + Add to My Shelf
         </button>
+
       </div>
+
     </div>
   `;
 
-  const bookmarkButton =
+  const bookmarkBtn =
     document.getElementById(
       "bookmarkBtn"
     );
 
-  bookmarkButton.addEventListener(
-    "click",
-    toggleBookmark
-  );
+  if (bookmarkBtn) {
+    bookmarkBtn.addEventListener(
+      "click",
+      toggleBookmark
+    );
+  }
 
   updateBookmarkButton();
 
   document.title =
     `${title} — Panelly`;
-
-  const descriptionMeta =
-    document.querySelector(
-      'meta[name="description"]'
-    );
-
-  if (descriptionMeta) {
-    descriptionMeta.content =
-      description.slice(
-        0,
-        150
-      );
-  }
 }
 
-function updateReadButton() {
-  const button =
-    document.getElementById(
-      "readNowBtn"
-    );
-
-  if (!button) {
-    return;
-  }
+function getChapterKey(chapter) {
+  const number =
+    chapter.attributes?.chapter;
 
   if (
-    currentHostedChapters.length
+    number === null ||
+    number === undefined ||
+    number === ""
   ) {
-    const chapter =
-      currentHostedChapters[0];
-
-    button.href =
-      `reader.html?chapterId=${encodeURIComponent(
-        chapter.id
-      )}`;
-
-    button.textContent =
-      "Start Reading →";
-
-    button.classList.remove(
-      "disabled"
-    );
-
-    return;
+    return `oneshot-${chapter.id}`;
   }
 
-  button.removeAttribute(
-    "href"
+  return `chapter-${number}`;
+}
+
+function chapterSortValue(
+  chapter
+) {
+  const number =
+    parseFloat(
+      chapter.attributes?.chapter
+    );
+
+  if (
+    Number.isFinite(number)
+  ) {
+    return number;
+  }
+
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function getBestChapters(
+  chapters
+) {
+  const map =
+    new Map();
+
+  chapters.forEach(
+    (chapter) => {
+      const key =
+        getChapterKey(
+          chapter
+        );
+
+      const existing =
+        map.get(key);
+
+      if (!existing) {
+        map.set(
+          key,
+          chapter
+        );
+
+        return;
+      }
+
+      const existingExternal =
+        Boolean(
+          safeExternalUrl(
+            existing.attributes
+              ?.externalUrl
+          )
+        );
+
+      const currentExternal =
+        Boolean(
+          safeExternalUrl(
+            chapter.attributes
+              ?.externalUrl
+          )
+        );
+
+      if (
+        existingExternal &&
+        !currentExternal
+      ) {
+        map.set(
+          key,
+          chapter
+        );
+
+        return;
+      }
+
+      if (
+        existingExternal ===
+        currentExternal
+      ) {
+        const existingTitle =
+          existing.attributes
+            ?.title;
+
+        const currentTitle =
+          chapter.attributes
+            ?.title;
+
+        if (
+          !existingTitle &&
+          currentTitle
+        ) {
+          map.set(
+            key,
+            chapter
+          );
+        }
+      }
+    }
   );
 
-  button.textContent =
-    "No Panelly Reader Chapters";
-
-  button.classList.add(
-    "disabled"
+  return Array.from(
+    map.values()
+  ).sort(
+    (a, b) =>
+      chapterSortValue(a) -
+      chapterSortValue(b)
   );
 }
 
@@ -779,24 +673,225 @@ function getChapterLabel(
   return label;
 }
 
-function renderHostedChapters(
+function getGroupName(
+  chapter
+) {
+  const group =
+    chapter.relationships?.find(
+      (relationship) =>
+        relationship.type ===
+        "scanlation_group"
+    );
+
+  return (
+    group?.attributes?.name ||
+    "Community release"
+  );
+}
+
+function getExternalSourceName(
+  urlValue
+) {
+  try {
+    const hostname =
+      new URL(urlValue)
+        .hostname
+        .replace(
+          /^www\./,
+          ""
+        );
+
+    if (
+      hostname.includes(
+        "mangaplus"
+      )
+    ) {
+      return "MANGA Plus";
+    }
+
+    if (
+      hostname.includes(
+        "viz.com"
+      )
+    ) {
+      return "VIZ";
+    }
+
+    if (
+      hostname.includes(
+        "webtoons.com"
+      )
+    ) {
+      return "WEBTOON";
+    }
+
+    if (
+      hostname.includes(
+        "tapas.io"
+      )
+    ) {
+      return "Tapas";
+    }
+
+    if (
+      hostname.includes(
+        "pocketcomics"
+      )
+    ) {
+      return "Pocket Comics";
+    }
+
+    if (
+      hostname.includes(
+        "tappytoon"
+      )
+    ) {
+      return "Tappytoon";
+    }
+
+    if (
+      hostname.includes(
+        "comikey"
+      )
+    ) {
+      return "Comikey";
+    }
+
+    if (
+      hostname.includes(
+        "azuki"
+      )
+    ) {
+      return "Azuki";
+    }
+
+    return "Official site";
+  } catch {
+    return "Official site";
+  }
+}
+
+function updateReadButton(
   chapters
 ) {
-  chapterListEl.innerHTML = "";
+  const button =
+    document.getElementById(
+      "readNowBtn"
+    );
 
-  chapters.forEach(
+  if (!button) {
+    return;
+  }
+
+  const hosted =
+    chapters.find(
+      (chapter) =>
+        !safeExternalUrl(
+          chapter.attributes
+            ?.externalUrl
+        )
+    );
+
+  if (hosted) {
+    button.href =
+      `reader.html?chapterId=${encodeURIComponent(
+        hosted.id
+      )}`;
+
+    button.textContent =
+      "Start Reading →";
+
+    button.classList.remove(
+      "disabled"
+    );
+
+    return;
+  }
+
+  const first =
+    chapters[0];
+
+  if (first) {
+    const externalUrl =
+      safeExternalUrl(
+        first.attributes
+          ?.externalUrl
+      );
+
+    if (externalUrl) {
+      button.href =
+        externalUrl;
+
+      button.target =
+        "_blank";
+
+      button.rel =
+        "noopener noreferrer";
+
+      button.textContent =
+        "Read Officially ↗";
+
+      button.classList.remove(
+        "disabled"
+      );
+
+      return;
+    }
+  }
+
+  button.removeAttribute(
+    "href"
+  );
+
+  button.textContent =
+    "No Chapters Available";
+
+  button.classList.add(
+    "disabled"
+  );
+}
+
+function renderChapters(
+  chapters
+) {
+  currentChapters =
+    getBestChapters(
+      chapters
+    );
+
+  chapterListEl.innerHTML =
+    "";
+
+  if (
+    chapterCountEl
+  ) {
+    chapterCountEl.textContent =
+      `${currentChapters.length} chapters`;
+  }
+
+  updateReadButton(
+    currentChapters
+  );
+
+  if (
+    !currentChapters.length
+  ) {
+    chapterListEl.innerHTML = `
+      <p class="status-msg">
+        No English chapters available.
+      </p>
+    `;
+
+    return;
+  }
+
+  currentChapters.forEach(
     (chapter, index) => {
-      const group =
-        chapter.relationships
-          ?.find(
-            (relationship) =>
-              relationship.type ===
-              "scanlation_group"
-          );
-
-      const groupName =
-        group?.attributes?.name ||
-        "Community release";
+      const externalUrl =
+        safeExternalUrl(
+          chapter.attributes
+            ?.externalUrl
+        );
 
       const row =
         document.createElement(
@@ -804,12 +899,32 @@ function renderHostedChapters(
         );
 
       row.className =
-        "chapter-card-new";
+        "chapter-row chapter-card-new";
 
-      row.href =
-        `reader.html?chapterId=${encodeURIComponent(
-          chapter.id
-        )}`;
+      const sourceName =
+        externalUrl
+          ? getExternalSourceName(
+              externalUrl
+            )
+          : getGroupName(
+              chapter
+            );
+
+      if (externalUrl) {
+        row.href =
+          externalUrl;
+
+        row.target =
+          "_blank";
+
+        row.rel =
+          "noopener noreferrer";
+      } else {
+        row.href =
+          `reader.html?chapterId=${encodeURIComponent(
+            chapter.id
+          )}`;
+      }
 
       row.innerHTML = `
         <span class="chapter-index">
@@ -819,7 +934,8 @@ function renderHostedChapters(
         </span>
 
         <span class="chapter-main">
-          <strong>
+
+          <strong class="chapter-label">
             ${escapeHtml(
               getChapterLabel(
                 chapter
@@ -827,15 +943,20 @@ function renderHostedChapters(
             )}
           </strong>
 
-          <small>
+          <small class="chapter-group">
             ${escapeHtml(
-              groupName
+              sourceName
             )}
           </small>
+
         </span>
 
         <span class="chapter-read">
-          READ →
+          ${
+            externalUrl
+              ? "OFFICIAL ↗"
+              : "READ →"
+          }
         </span>
       `;
 
@@ -846,159 +967,19 @@ function renderHostedChapters(
   );
 }
 
-function renderExternalFallback(
-  chapters
-) {
-  const sources =
-    getOfficialSources(
-      chapters
-    );
-
-  const sourceButtons =
-    sources
-      .slice(0, 4)
-      .map(
-        (source) => `
-          <a
-            class="official-source-btn"
-            href="${escapeHtml(
-              source.url
-            )}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            ${escapeHtml(
-              source.name
-            )} ↗
-          </a>
-        `
-      )
-      .join("");
-
-  chapterListEl.innerHTML = `
-    <div class="external-only-panel">
-
-      <span class="external-label">
-        OFFICIAL RELEASE ONLY
-      </span>
-
-      <h3>
-        This series isn't hosted inside
-        Panelly yet.
-      </h3>
-
-      <p>
-        MangaDex lists this title, but its
-        English chapters are hosted by an
-        external publisher. Panelly can only
-        display chapter pages that MangaDex
-        actually provides.
-      </p>
-
-      ${
-        sourceButtons
-          ? `
-            <div class="official-sources">
-              ${sourceButtons}
-            </div>
-          `
-          : ""
-      }
-
-      <a
-        class="find-readable-btn"
-        href="index.html#browseSection"
-      >
-        ← Find another readable series
-      </a>
-
-    </div>
-  `;
-}
-
-function renderNoChapters() {
-  chapterListEl.innerHTML = `
-    <div class="external-only-panel">
-
-      <span class="external-label">
-        NO ENGLISH RELEASE
-      </span>
-
-      <h3>
-        No readable English chapters yet.
-      </h3>
-
-      <p>
-        Check back later or browse another
-        title on Panelly.
-      </p>
-
-      <a
-        class="find-readable-btn"
-        href="index.html#browseSection"
-      >
-        ← Browse manga
-      </a>
-
-    </div>
-  `;
-}
-
-function renderChapters(
-  chapters
-) {
-  currentHostedChapters =
-    uniqueHostedChapters(
-      chapters
-    );
-
-  currentExternalChapters =
-    externalChapters(
-      chapters
-    );
-
-  updateReadButton();
-
-  chapterCountEl.textContent =
-    currentHostedChapters.length
-      ? `${currentHostedChapters.length} readable`
-      : "0 readable";
-
-  if (
-    currentHostedChapters.length
-  ) {
-    renderHostedChapters(
-      currentHostedChapters
-    );
-
-    return;
-  }
-
-  if (
-    currentExternalChapters.length
-  ) {
-    renderExternalFallback(
-      currentExternalChapters
-    );
-
-    return;
-  }
-
-  renderNoChapters();
-}
-
 async function init() {
   const id =
     getMangaId();
 
   if (!id) {
     detailEl.innerHTML = `
-      <div class="series-loading">
+      <p class="status-msg">
         No manga selected.
-      </div>
+      </p>
     `;
 
-    chapterListEl.innerHTML = "";
+    chapterListEl.innerHTML =
+      "";
 
     return;
   }
@@ -1019,15 +1000,15 @@ async function init() {
     console.error(err);
 
     detailEl.innerHTML = `
-      <div class="series-loading">
-        Couldn't open this series.
-      </div>
+      <p class="status-msg">
+        Couldn't load this manga.
+      </p>
     `;
 
     chapterListEl.innerHTML = `
-      <div class="chapter-loading">
+      <p class="status-msg">
         Couldn't load chapters.
-      </div>
+      </p>
     `;
   }
 }
