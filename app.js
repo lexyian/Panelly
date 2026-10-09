@@ -15,9 +15,12 @@ const continueSection = document.getElementById("continueSection");
 const continueGrid = document.getElementById("continueGrid");
 const shelfSection = document.getElementById("shelfSection");
 const shelfGrid = document.getElementById("shelfGrid");
+const freshSectionEl = document.getElementById("freshSection");
 
 let trendingPool = [];
 let currentBrowsePool = [];
+let browseRequestId = 0;
+let freshLoaded = false;
 
 async function apiFetch(pathAndQuery) {
   const res = await fetch(
@@ -175,16 +178,6 @@ function getPrimaryGenre(manga) {
   return tags[0] || "Manga";
 }
 
-function imageMarkup(url, alt) {
-  if (!url) {
-    return `<div class="image-fallback"></div>`;
-  }
-
-  return `<img src="${escapeHtml(
-    url
-  )}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">`;
-}
-
 async function fetchGenreTags() {
   const res = await apiFetch("/manga/tag");
   const json = await res.json();
@@ -229,7 +222,7 @@ async function populateGenres() {
 async function fetchManga({
   title,
   tagId,
-  limit = 18,
+  limit = 8,
   order = "followedCount",
 } = {}) {
   const params = {
@@ -325,11 +318,13 @@ function renderHero(manga, number = 1) {
     <div class="hero-art">
       ${
         cover
-          ? `<img src="${escapeHtml(
-              cover
-            )}" alt="${escapeHtml(
-              title
-            )} cover">`
+          ? `<img
+              src="${escapeHtml(cover)}"
+              alt="${escapeHtml(title)} cover"
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+            >`
           : ""
       }
 
@@ -341,7 +336,8 @@ function renderHero(manga, number = 1) {
 }
 
 function createMangaCard(manga, index) {
-  const card = document.createElement("article");
+  const card =
+    document.createElement("article");
 
   card.className = "manga-card";
   card.tabIndex = 0;
@@ -349,6 +345,12 @@ function createMangaCard(manga, index) {
   const title = getTitle(manga);
   const cover = getCoverUrl(manga, 256);
   const genre = getPrimaryGenre(manga);
+
+  const loadingMode =
+    index < 2 ? "eager" : "lazy";
+
+  const priority =
+    index < 2 ? "high" : "auto";
 
   card.innerHTML = `
     <div class="card-cover-wrap">
@@ -358,11 +360,13 @@ function createMangaCard(manga, index) {
 
       ${
         cover
-          ? `<img src="${escapeHtml(
-              cover
-            )}" alt="${escapeHtml(
-              title
-            )} cover" loading="lazy">`
+          ? `<img
+              src="${escapeHtml(cover)}"
+              alt="${escapeHtml(title)} cover"
+              loading="${loadingMode}"
+              decoding="async"
+              fetchpriority="${priority}"
+            >`
           : ""
       }
     </div>
@@ -389,17 +393,23 @@ function createMangaCard(manga, index) {
       )}`;
   };
 
-  card.addEventListener("click", openManga);
+  card.addEventListener(
+    "click",
+    openManga
+  );
 
-  card.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Enter" ||
-      event.key === " "
-    ) {
-      event.preventDefault();
-      openManga();
+  card.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key === "Enter" ||
+        event.key === " "
+      ) {
+        event.preventDefault();
+        openManga();
+      }
     }
-  });
+  );
 
   return card;
 }
@@ -419,11 +429,16 @@ function renderBrowse(mangaList) {
     return;
   }
 
-  mangaList.forEach((manga, index) => {
-    gridEl.appendChild(
-      createMangaCard(manga, index)
-    );
-  });
+  mangaList.forEach(
+    (manga, index) => {
+      gridEl.appendChild(
+        createMangaCard(
+          manga,
+          index
+        )
+      );
+    }
+  );
 }
 
 function renderFresh(mangaList) {
@@ -439,55 +454,63 @@ function renderFresh(mangaList) {
     return;
   }
 
-  mangaList.forEach((manga, index) => {
-    const title = getTitle(manga);
-    const cover = getCoverUrl(manga, 256);
+  mangaList.forEach(
+    (manga, index) => {
+      const title = getTitle(manga);
+      const cover =
+        getCoverUrl(manga, 256);
 
-    const card =
-      document.createElement("a");
+      const card =
+        document.createElement("a");
 
-    card.className = "fresh-card";
-    card.href =
-      `detail.html?id=${encodeURIComponent(
-        manga.id
-      )}`;
+      card.className = "fresh-card";
 
-    card.innerHTML = `
-      ${
-        cover
-          ? `<img src="${escapeHtml(
-              cover
-            )}" alt="${escapeHtml(
-              title
-            )} cover" loading="lazy">`
-          : ""
-      }
+      card.href =
+        `detail.html?id=${encodeURIComponent(
+          manga.id
+        )}`;
 
-      <div class="fresh-info">
-        <span class="fresh-label">
-          FRESH INK ${String(
-            index + 1
-          ).padStart(2, "0")}
-        </span>
+      card.innerHTML = `
+        ${
+          cover
+            ? `<img
+                src="${escapeHtml(cover)}"
+                alt="${escapeHtml(title)} cover"
+                loading="lazy"
+                decoding="async"
+              >`
+            : ""
+        }
 
-        <span class="fresh-title">
-          ${escapeHtml(title)}
-        </span>
+        <div class="fresh-info">
+          <span class="fresh-label">
+            FRESH INK ${String(
+              index + 1
+            ).padStart(2, "0")}
+          </span>
 
-        <span class="fresh-action">
-          VIEW SERIES →
-        </span>
-      </div>
-    `;
+          <span class="fresh-title">
+            ${escapeHtml(title)}
+          </span>
 
-    freshGridEl.appendChild(card);
-  });
+          <span class="fresh-action">
+            VIEW SERIES →
+          </span>
+        </div>
+      `;
+
+      freshGridEl.appendChild(
+        card
+      );
+    }
+  );
 }
 
 function readStorage(key) {
   try {
     const data = JSON.parse(
-      localStorage.getItem(key) || "[]"
+      localStorage.getItem(key) ||
+        "[]"
     );
 
     if (Array.isArray(data)) {
@@ -508,18 +531,24 @@ function readStorage(key) {
 }
 
 function renderContinueReading() {
-  const items = readStorage(CONTINUE_KEY)
-    .sort(
-      (a, b) =>
-        Number(b.updatedAt || 0) -
-        Number(a.updatedAt || 0)
-    )
-    .slice(0, 6);
+  const items =
+    readStorage(CONTINUE_KEY)
+      .sort(
+        (a, b) =>
+          Number(
+            b.updatedAt || 0
+          ) -
+          Number(
+            a.updatedAt || 0
+          )
+      )
+      .slice(0, 6);
 
   if (!items.length) {
     continueSection.classList.add(
       "hidden-section"
     );
+
     return;
   }
 
@@ -543,15 +572,17 @@ function renderContinueReading() {
       item.chapterTitle ||
       "Continue chapter";
 
-    const cover = getStoredCoverUrl(
-      item,
-      256
-    );
+    const cover =
+      getStoredCoverUrl(
+        item,
+        256
+      );
 
     const card =
       document.createElement("a");
 
-    card.className = "continue-card";
+    card.className =
+      "continue-card";
 
     if (item.chapterId) {
       card.href =
@@ -568,11 +599,12 @@ function renderContinueReading() {
     card.innerHTML = `
       ${
         cover
-          ? `<img src="${escapeHtml(
-              cover
-            )}" alt="${escapeHtml(
-              title
-            )} cover">`
+          ? `<img
+              src="${escapeHtml(cover)}"
+              alt="${escapeHtml(title)} cover"
+              loading="lazy"
+              decoding="async"
+            >`
           : ""
       }
 
@@ -586,7 +618,9 @@ function renderContinueReading() {
         </span>
 
         <span class="continue-chapter">
-          ${escapeHtml(chapterLabel)} →
+          ${escapeHtml(
+            chapterLabel
+          )} →
         </span>
 
         <div class="reading-line">
@@ -595,25 +629,31 @@ function renderContinueReading() {
       </div>
     `;
 
-    continueGrid.appendChild(card);
+    continueGrid.appendChild(
+      card
+    );
   });
 }
 
 function renderShelf() {
-  const bookmarks = readStorage(
-    BOOKMARK_KEY
-  )
-    .sort(
-      (a, b) =>
-        Number(b.savedAt || 0) -
-        Number(a.savedAt || 0)
-    )
-    .slice(0, 10);
+  const bookmarks =
+    readStorage(BOOKMARK_KEY)
+      .sort(
+        (a, b) =>
+          Number(
+            b.savedAt || 0
+          ) -
+          Number(
+            a.savedAt || 0
+          )
+      )
+      .slice(0, 10);
 
   if (!bookmarks.length) {
     shelfSection.classList.add(
       "hidden-section"
     );
+
     return;
   }
 
@@ -632,15 +672,18 @@ function renderShelf() {
       item.title ||
       "Untitled";
 
-    const cover = getStoredCoverUrl(
-      item,
-      256
-    );
+    const cover =
+      getStoredCoverUrl(
+        item,
+        256
+      );
 
     const card =
       document.createElement("a");
 
-    card.className = "shelf-card";
+    card.className =
+      "shelf-card";
+
     card.href =
       `detail.html?id=${encodeURIComponent(
         mangaId
@@ -649,11 +692,12 @@ function renderShelf() {
     card.innerHTML = `
       ${
         cover
-          ? `<img src="${escapeHtml(
-              cover
-            )}" alt="${escapeHtml(
-              title
-            )} cover">`
+          ? `<img
+              src="${escapeHtml(cover)}"
+              alt="${escapeHtml(title)} cover"
+              loading="lazy"
+              decoding="async"
+            >`
           : ""
       }
 
@@ -673,23 +717,35 @@ function renderShelf() {
 }
 
 async function loadBrowse() {
-  const term = searchInput.value.trim();
+  const requestId =
+    ++browseRequestId;
+
+  const term =
+    searchInput.value.trim();
+
   const tagId =
     genreFilterEl.value || "";
 
-  const selectedGenre = tagId
-    ? genreFilterEl.options[
-        genreFilterEl.selectedIndex
-      ].textContent
-    : "";
+  const selectedGenre =
+    tagId
+      ? genreFilterEl.options[
+          genreFilterEl
+            .selectedIndex
+        ].textContent
+      : "";
 
-  if (term && selectedGenre) {
+  if (
+    term &&
+    selectedGenre
+  ) {
     gridTitleEl.textContent =
       `"${term}" · ${selectedGenre}`;
   } else if (term) {
     gridTitleEl.textContent =
       `Search: ${term}`;
-  } else if (selectedGenre) {
+  } else if (
+    selectedGenre
+  ) {
     gridTitleEl.textContent =
       selectedGenre;
   } else {
@@ -704,23 +760,48 @@ async function loadBrowse() {
   `;
 
   try {
-    const mangaList = await fetchManga({
-      title: term || undefined,
-      tagId: tagId || undefined,
-      limit: 10,
-      order: "followedCount",
-    });
+    const mangaList =
+      await fetchManga({
+        title:
+          term || undefined,
+        tagId:
+          tagId || undefined,
+        limit: 8,
+        order:
+          "followedCount",
+      });
+
+    if (
+      requestId !==
+      browseRequestId
+    ) {
+      return;
+    }
 
     renderBrowse(mangaList);
 
-    if (!term && !tagId) {
-      trendingPool = mangaList;
+    if (
+      !term &&
+      !tagId
+    ) {
+      trendingPool =
+        mangaList;
 
       if (mangaList[0]) {
-        renderHero(mangaList[0], 1);
+        renderHero(
+          mangaList[0],
+          1
+        );
       }
     }
   } catch (err) {
+    if (
+      requestId !==
+      browseRequestId
+    ) {
+      return;
+    }
+
     console.error(err);
 
     gridEl.innerHTML = `
@@ -733,10 +814,18 @@ async function loadBrowse() {
 
 async function loadFresh() {
   try {
-    const mangaList = await fetchManga({
-      limit: 7,
-      order: "latestUploadedChapter",
-    });
+    freshGridEl.innerHTML = `
+      <div class="loading-panel">
+        Loading fresh releases...
+      </div>
+    `;
+
+    const mangaList =
+      await fetchManga({
+        limit: 6,
+        order:
+          "latestUploadedChapter",
+      });
 
     renderFresh(mangaList);
   } catch (err) {
@@ -751,19 +840,23 @@ async function loadFresh() {
 }
 
 function runRoulette() {
-  const pool = currentBrowsePool.length
-    ? currentBrowsePool
-    : trendingPool;
+  const pool =
+    currentBrowsePool.length
+      ? currentBrowsePool
+      : trendingPool;
 
   if (!pool.length) {
     return;
   }
 
-  const randomIndex = Math.floor(
-    Math.random() * pool.length
-  );
+  const randomIndex =
+    Math.floor(
+      Math.random() *
+        pool.length
+    );
 
-  const manga = pool[randomIndex];
+  const manga =
+    pool[randomIndex];
 
   renderHero(
     manga,
@@ -780,10 +873,13 @@ searchForm.addEventListener(
   "submit",
   (event) => {
     event.preventDefault();
+
     loadBrowse();
 
     document
-      .getElementById("browseSection")
+      .getElementById(
+        "browseSection"
+      )
       .scrollIntoView({
         behavior: "smooth",
       });
@@ -807,52 +903,64 @@ mobileRouletteBtn.addEventListener(
   runRoulette
 );
 
-const params = new URLSearchParams(
-  window.location.search
-);
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
 
 const initialSearch =
   params.get("search");
 
 if (initialSearch) {
-  searchInput.value = initialSearch;
+  searchInput.value =
+    initialSearch;
 }
 
 renderContinueReading();
 renderShelf();
-
 loadBrowse();
 
 const idleLoad =
   window.requestIdleCallback ||
   function (callback) {
-    setTimeout(callback, 1200);
+    setTimeout(
+      callback,
+      1200
+    );
   };
 
 idleLoad(() => {
   populateGenres();
 });
 
-let freshLoaded = false;
+if (
+  freshSectionEl &&
+  "IntersectionObserver" in window
+) {
+  const freshObserver =
+    new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0]
+            .isIntersecting &&
+          !freshLoaded
+        ) {
+          freshLoaded = true;
 
-const freshSectionEl =
-  document.getElementById("freshSection");
+          loadFresh();
 
-const freshObserver =
-  new IntersectionObserver(
-    (entries) => {
-      if (
-        entries[0].isIntersecting &&
-        !freshLoaded
-      ) {
-        freshLoaded = true;
-        loadFresh();
-        freshObserver.disconnect();
+          freshObserver.disconnect();
+        }
+      },
+      {
+        rootMargin: "500px",
       }
-    },
-    {
-      rootMargin: "500px",
-    }
-  );
+    );
 
-freshObserver.observe(freshSectionEl);
+  freshObserver.observe(
+    freshSectionEl
+  );
+} else {
+  freshLoaded = true;
+  loadFresh();
+}
