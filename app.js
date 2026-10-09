@@ -707,7 +707,7 @@ async function loadBrowse() {
     const mangaList = await fetchManga({
       title: term || undefined,
       tagId: tagId || undefined,
-      limit: 12,
+      limit: 10,
       order: "followedCount",
     });
 
@@ -734,7 +734,7 @@ async function loadBrowse() {
 async function loadFresh() {
   try {
     const mangaList = await fetchManga({
-      limit: 8,
+      limit: 7,
       order: "latestUploadedChapter",
     });
 
