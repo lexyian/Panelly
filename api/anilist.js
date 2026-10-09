@@ -27,12 +27,40 @@ async function requestAniList(query, variables = {}) {
 
 module.exports = async function handler(req, res) {
   const mode = String(
-    req.query.mode || "detail"
+    req.query.mode || "browse"
   );
 
   try {
+    if (mode === "genres") {
+      const query = `
+        query {
+          GenreCollection
+        }
+      `;
+
+      const data =
+        await requestAniList(query);
+
+      const genres =
+        Array.isArray(
+          data.GenreCollection
+        )
+          ? data.GenreCollection
+          : [];
+
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+      );
+
+      return res.status(200).json({
+        genres
+      });
+    }
+
     if (mode === "detail") {
-      const id = Number(req.query.id);
+      const id =
+        Number(req.query.id);
 
       if (
         !Number.isInteger(id) ||
@@ -48,28 +76,46 @@ module.exports = async function handler(req, res) {
           Media(id: $id, type: MANGA) {
             id
             idMal
+
             title {
               romaji
               english
               native
             }
+
             synonyms
+
             description(asHtml: false)
+
             status
             format
             chapters
             volumes
             countryOfOrigin
             isAdult
+
+            averageScore
+            popularity
+            trending
+            updatedAt
+
             startDate {
               year
+              month
+              day
             }
+
             coverImage {
               extraLarge
               large
               medium
+              color
             }
+
+            bannerImage
+
             genres
+
             tags {
               name
               rank
@@ -77,9 +123,11 @@ module.exports = async function handler(req, res) {
               isGeneralSpoiler
               isMediaSpoiler
             }
+
             staff(perPage: 12) {
               edges {
                 role
+
                 node {
                   name {
                     full
@@ -87,6 +135,7 @@ module.exports = async function handler(req, res) {
                 }
               }
             }
+
             externalLinks {
               site
               url
@@ -94,6 +143,8 @@ module.exports = async function handler(req, res) {
               language
               isDisabled
             }
+
+            siteUrl
           }
         }
       `;
@@ -120,6 +171,178 @@ module.exports = async function handler(req, res) {
 
       return res.status(200).json({
         manga: data.Media
+      });
+    }
+
+    if (mode === "browse") {
+      const search =
+        typeof req.query.search === "string" &&
+        req.query.search.trim()
+          ? req.query.search.trim()
+          : null;
+
+      const genre =
+        typeof req.query.genre === "string" &&
+        req.query.genre.trim()
+          ? req.query.genre.trim()
+          : null;
+
+      const page =
+        Math.max(
+          1,
+          Number(req.query.page) || 1
+        );
+
+      const perPage =
+        Math.min(
+          20,
+          Math.max(
+            1,
+            Number(req.query.perPage) || 8
+          )
+        );
+
+      const requestedSort =
+        String(
+          req.query.sort || "trending"
+        );
+
+      let sort = [
+        "TRENDING_DESC",
+        "POPULARITY_DESC"
+      ];
+
+      if (search) {
+        sort = [
+          "SEARCH_MATCH",
+          "POPULARITY_DESC"
+        ];
+      } else if (
+        requestedSort === "fresh"
+      ) {
+        sort = [
+          "UPDATED_AT_DESC",
+          "POPULARITY_DESC"
+        ];
+      } else if (
+        requestedSort === "popular"
+      ) {
+        sort = [
+          "POPULARITY_DESC",
+          "SCORE_DESC"
+        ];
+      }
+
+      const query = `
+        query (
+          $page: Int
+          $perPage: Int
+          $search: String
+          $genre: String
+          $sort: [MediaSort]
+        ) {
+          Page(
+            page: $page
+            perPage: $perPage
+          ) {
+            pageInfo {
+              currentPage
+              lastPage
+              hasNextPage
+              perPage
+              total
+            }
+
+            media(
+              type: MANGA
+              format_in: [MANGA, ONE_SHOT]
+              isAdult: false
+              search: $search
+              genre: $genre
+              sort: $sort
+            ) {
+              id
+              idMal
+
+              title {
+                romaji
+                english
+                native
+              }
+
+              synonyms
+
+              description(asHtml: false)
+
+              status
+              format
+              chapters
+              volumes
+              countryOfOrigin
+
+              averageScore
+              popularity
+              trending
+              updatedAt
+
+              startDate {
+                year
+              }
+
+              coverImage {
+                extraLarge
+                large
+                medium
+                color
+              }
+
+              bannerImage
+
+              genres
+
+              tags {
+                name
+                rank
+                isAdult
+                isGeneralSpoiler
+                isMediaSpoiler
+              }
+            }
+          }
+        }
+      `;
+
+      const data =
+        await requestAniList(
+          query,
+          {
+            page,
+            perPage,
+            search,
+            genre,
+            sort
+          }
+        );
+
+      const manga =
+        (
+          data.Page?.media ||
+          []
+        ).filter(
+          (item) =>
+            !item.isAdult
+        );
+
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=120, s-maxage=600, stale-while-revalidate=3600"
+      );
+
+      return res.status(200).json({
+        manga,
+        pageInfo:
+          data.Page?.pageInfo ||
+          {}
       });
     }
 
