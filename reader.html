@@ -1,42 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="favicon.png">
-  <title>Panelly — Reader</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Reader — Panelly</title>
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="favicon.png"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
-<body>
 
-  <header class="reader-bar">
-    <a class="back-link" id="backLink" href="index.html">← Back</a>
-    <span class="reader-title" id="readerTitle">Loading…</span>
-    <span></span>
+<body class="reader-body">
+
+  <header class="reader-header">
+
+    <a
+      class="reader-brand"
+      href="index.html"
+    >
+      <span class="brand-mark">
+        <span>P</span>
+      </span>
+
+      <span>
+        Panelly
+      </span>
+    </a>
+
+    <div class="reader-info">
+
+      <strong id="readerTitle">
+        Opening chapter...
+      </strong>
+
+      <small id="chapterMeta">
+        PANELLY READER
+      </small>
+
+    </div>
+
+    <a
+      class="reader-exit"
+      id="backSeries"
+      href="index.html"
+    >
+      EXIT READER
+    </a>
+
   </header>
-  
+
+  <div class="reader-progress">
+    <span id="progressBar"></span>
+  </div>
+
   <main class="reader-main">
-    <div class="reader-nav" id="navTop">
-      <a class="nav-btn" id="prevBtnTop">← Previous</a>
-      <a class="nav-btn" id="nextBtnTop">Next →</a>
+
+    <div
+      class="reader-status"
+      id="readerStatus"
+    >
+      INKING PAGES...
     </div>
 
-    <div class="page-list" id="pageList">
-      <p class="status-msg">Loading pages…</p>
-    </div>
+    <div
+      class="reader-pages"
+      id="pages"
+    ></div>
 
-    <div class="reader-nav" id="navBottom">
-      <a class="nav-btn" id="prevBtnBottom">← Previous</a>
-      <a class="nav-btn" id="nextBtnBottom">Next →</a>
-    </div>
+    <section
+      class="reader-end hidden"
+      id="readerEnd"
+    >
+
+      <span class="reader-end-label">
+        END OF CHAPTER
+      </span>
+
+      <h2 id="endTitle">
+        Continue the story.
+      </h2>
+
+      <div class="reader-controls">
+
+        <a
+          class="reader-control disabled"
+          id="prevBtn"
+        >
+          ← PREVIOUS
+        </a>
+
+        <a
+          class="reader-control"
+          id="seriesBtn"
+          href="index.html"
+        >
+          SERIES FILE
+        </a>
+
+        <a
+          class="reader-control next disabled"
+          id="nextBtn"
+        >
+          NEXT →
+        </a>
+
+      </div>
+
+    </section>
+
   </main>
 
-  <footer class="site-footer">
-    <p>Manga data and cover art provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>.</p>
-  </footer>
-
   <script src="reader.js"></script>
+
 </body>
 </html>
