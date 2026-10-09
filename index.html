@@ -3,42 +3,162 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panelly — Manga Reader</title>
+  <meta name="theme-color" content="#111111" />
+  <title>Panelly — Find Your Next Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+
+<body class="home-page">
 
   <header class="site-header">
-    <a class="logo" href="/">Panelly</a>
+    <a class="brand" href="index.html">
+      <span class="brand-mark">P</span>
+      <span class="brand-name">Panelly</span>
+    </a>
+
+    <nav class="desktop-nav">
+      <a href="#browseSection">Browse</a>
+      <a href="#freshSection">Fresh Ink</a>
+      <a href="#shelfSection">My Shelf</a>
+    </nav>
+
     <form class="search-form" id="searchForm">
-      <input type="text" id="searchInput" placeholder="Search manga…" autocomplete="off" />
+      <input
+        type="search"
+        id="searchInput"
+        placeholder="Search a title..."
+        autocomplete="off"
+      />
       <button type="submit">Search</button>
     </form>
   </header>
 
-  <main>
-    <section class="hero" id="hero">
-      <p class="hero-eyebrow-hidden"></p>
+  <main class="home-shell">
+
+    <section class="hero-wrap">
+      <div class="hero-topline">
+        <div>
+          <span class="eyebrow">PANELLY PICK</span>
+          <span class="issue-label">ISSUE 001</span>
+        </div>
+
+        <button class="roulette-btn" id="rouletteBtn" type="button">
+          <span class="roulette-icon">↻</span>
+          Panel Roulette
+        </button>
+      </div>
+
+      <section class="hero" id="hero">
+        <div class="hero-loading">
+          <span>Loading today's panel...</span>
+        </div>
+      </section>
     </section>
 
-    <section class="rail">
-      <div class="rail-header">
-        <h2 id="gridTitle">Trending now</h2>
-        <select id="genreFilter" class="genre-filter">
-          <option value="">All genres</option>
-        </select>
+    <section class="home-section hidden-section" id="continueSection">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">PICK UP THE PAGE</p>
+          <h2>Continue Reading</h2>
+        </div>
+
+        <span class="section-number">01</span>
       </div>
+
+      <div class="continue-grid" id="continueGrid"></div>
+    </section>
+
+    <section class="home-section hidden-section" id="shelfSection">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">YOUR COLLECTION</p>
+          <h2>My Shelf</h2>
+        </div>
+
+        <span class="section-number">02</span>
+      </div>
+
+      <div class="shelf-grid" id="shelfGrid"></div>
+    </section>
+
+    <section class="home-section" id="browseSection">
+      <div class="section-heading browse-heading">
+        <div>
+          <p class="section-kicker">WHAT PEOPLE ARE READING</p>
+          <h2 id="gridTitle">Trending Panels</h2>
+        </div>
+
+        <div class="browse-controls">
+          <select id="genreFilter" class="genre-filter">
+            <option value="">All genres</option>
+          </select>
+        </div>
+      </div>
+
       <div class="manga-grid" id="mangaGrid">
-        <p class="status-msg" id="statusMsg">Loading manga…</p>
+        <div class="loading-panel">
+          <span>Loading panels...</span>
+        </div>
       </div>
     </section>
+
+    <section class="home-section fresh-section" id="freshSection">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">RECENTLY UPDATED</p>
+          <h2>Fresh Ink</h2>
+        </div>
+
+        <span class="section-number">03</span>
+      </div>
+
+      <div class="fresh-grid" id="freshGrid">
+        <div class="loading-panel">
+          <span>Checking fresh releases...</span>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="site-footer">
-    <p>Manga data and cover art provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a>.</p>
+    <div class="footer-brand">
+      <span class="footer-logo">Panelly</span>
+      <span>Find your next panel.</span>
+    </div>
+
+    <p>
+      Manga information and artwork provided by
+      <a href="https://mangadex.org" target="_blank" rel="noopener noreferrer">
+        MangaDex
+      </a>.
+    </p>
   </footer>
+
+  <nav class="mobile-nav">
+    <a href="index.html">
+      <span>⌂</span>
+      <small>Home</small>
+    </a>
+
+    <a href="#browseSection">
+      <span>⌕</span>
+      <small>Browse</small>
+    </a>
+
+    <button id="mobileRouletteBtn" type="button">
+      <span>↻</span>
+      <small>Roulette</small>
+    </button>
+
+    <a href="#shelfSection">
+      <span>▣</span>
+      <small>Shelf</small>
+    </a>
+  </nav>
 
   <script src="app.js"></script>
 </body>
