@@ -1,119 +1,136 @@
-const { Readable } = require("node:stream");
+function allowedHost(
+  hostname
+) {
+  return (
+    hostname ===
+      "uploads.mangadex.org" ||
+    hostname ===
+      "mangadex.network" ||
+    hostname.endsWith(
+      ".mangadex.network"
+    )
+  );
+}
 
-module.exports = async function handler(req, res) {
-  const url = req.query.url;
+export default async function handler(
+  req,
+  res
+) {
+  const rawUrl =
+    Array.isArray(
+      req.query.url
+    )
+      ? req.query.url[0]
+      : req.query.url;
 
-  if (!url || typeof url !== "string") {
-    return res.status(400).json({
-      error: "Missing image URL",
-    });
+  if (
+    !rawUrl ||
+    typeof rawUrl !==
+      "string"
+  ) {
+    return res
+      .status(400)
+      .json({
+        error:
+          "Missing image URL."
+      });
   }
 
   let target;
 
   try {
-    target = new URL(url);
+    target =
+      new URL(rawUrl);
   } catch {
-    return res.status(400).json({
-      error: "Invalid image URL",
-    });
+    return res
+      .status(400)
+      .json({
+        error:
+          "Invalid image URL."
+      });
   }
 
-  if (target.protocol !== "https:") {
-    return res.status(403).json({
-      error: "Only HTTPS is allowed",
-    });
-  }
-
-  const allowedHosts = [
-    "uploads.mangadex.org",
-    "mangadex.network",
-  ];
-
-  const allowed = allowedHosts.some(
-    (host) =>
-      target.hostname === host ||
-      target.hostname.endsWith(`.${host}`)
-  );
-
-  if (!allowed) {
-    return res.status(403).json({
-      error: "Image host not allowed",
-    });
+  if (
+    target.protocol !==
+      "https:" ||
+    !allowedHost(
+      target.hostname
+    )
+  ) {
+    return res
+      .status(403)
+      .json({
+        error:
+          "Image host is not allowed."
+      });
   }
 
   try {
-    const upstream = await fetch(target.toString(), {
-      headers: {
-        "User-Agent": "Panelly-School-Project/1.0",
-        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        Referer: "https://mangadex.org/",
-      },
-    });
+    const response =
+      await fetch(
+        target.toString()
+      );
 
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({
-        error: `Image request failed: ${upstream.status}`,
-      });
+    if (
+      !response.ok
+    ) {
+      return res
+        .status(
+          response.status
+        )
+        .send(
+          "Image unavailable."
+        );
     }
 
     const contentType =
-      upstream.headers.get("content-type") ||
+      response.headers.get(
+        "content-type"
+      ) ||
       "image/jpeg";
 
-    if (!contentType.startsWith("image/")) {
-      return res.status(502).json({
-        error: "Response was not an image",
-      });
+    if (
+      !contentType
+        .toLowerCase()
+        .startsWith(
+          "image/"
+        )
+    ) {
+      return res
+        .status(415)
+        .send(
+          "Unsupported content."
+        );
     }
 
-    res.setHeader("Content-Type", contentType);
+    const arrayBuffer =
+      await response
+        .arrayBuffer();
+
+    res.setHeader(
+      "Content-Type",
+      contentType
+    );
 
     res.setHeader(
       "Cache-Control",
-      "public, max-age=86400"
+      "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
     );
 
-    res.setHeader(
-      "Vercel-CDN-Cache-Control",
-      "public, s-maxage=604800, stale-while-revalidate=2592000"
-    );
-
-    const contentLength =
-      upstream.headers.get("content-length");
-
-    if (contentLength) {
-      res.setHeader(
-        "Content-Length",
-        contentLength
+    return res
+      .status(200)
+      .send(
+        Buffer.from(
+          arrayBuffer
+        )
       );
-    }
+  } catch (error) {
+    console.error(error);
 
-    if (!upstream.body) {
-      return res.status(502).json({
-        error: "Empty image response",
-      });
-    }
-
-    await new Promise((resolve, reject) => {
-      const stream = Readable.fromWeb(
-        upstream.body
+    return res
+      .status(500)
+      .send(
+        "Image request failed."
       );
-
-      stream.on("error", reject);
-      res.on("finish", resolve);
-
-      stream.pipe(res);
-    });
-  } catch (err) {
-    console.error(err);
-
-    if (!res.headersSent) {
-      return res.status(502).json({
-        error: "Image proxy failed",
-      });
-    }
-
-    res.end();
   }
-};
+}
