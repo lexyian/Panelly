@@ -8,12 +8,22 @@
     content="width=device-width, initial-scale=1.0"
   >
 
+  <meta
+    name="theme-color"
+    content="#f2eee5"
+  >
+
   <title>Series — Panelly</title>
 
   <link
     rel="icon"
     type="image/png"
     href="favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="apple-touch-icon.png"
   >
 
   <link
@@ -28,7 +38,7 @@
   >
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   >
 
@@ -46,29 +56,40 @@
       class="brand"
       href="index.html"
     >
-      <span class="brand-mark">
-        <span>P</span>
-      </span>
 
-      <span class="brand-copy">
+      <div class="brand-mark">
+        P
+      </div>
+
+      <div>
         <strong>Panelly</strong>
-        <small>READ BETWEEN THE LINES.</small>
-      </span>
+        <span>READ BETWEEN THE LINES.</span>
+      </div>
+
     </a>
 
     <form
       class="header-search"
       id="searchForm"
     >
+
+      <label
+        class="sr-only"
+        for="searchInput"
+      >
+        Search manga
+      </label>
+
       <input
         id="searchInput"
         type="search"
-        placeholder="Search another series..."
+        placeholder="Search another manga..."
       >
 
       <button type="submit">
         →
       </button>
+
     </form>
 
     <nav class="desktop-nav">
@@ -76,8 +97,8 @@
         Home
       </a>
 
-      <a href="index.html#mainPanels">
-        Browse
+      <a href="index.html#browseSection">
+        Discover
       </a>
 
       <a href="index.html#shelfSection">
@@ -89,36 +110,49 @@
 
   <main class="detail-main">
 
-    <section class="series-dossier">
+    <section id="detail">
 
-      <span class="dossier-tab">
-        SERIES DOSSIER
-      </span>
-
-      <div id="detail">
-        <div class="loading-block large">
-          <span>OPENING SERIES FILE...</span>
-        </div>
+      <div class="detail-loading">
+        Opening series file...
       </div>
 
     </section>
 
     <section class="chapter-section">
 
-      <div class="chapter-head">
+      <div class="chapter-heading">
 
         <div>
-          <span>
-            READING RECORD
+          <span class="section-number">
+            READABLE NOW
           </span>
 
           <h2>
-            Chapter Strip
+            Chapters
           </h2>
         </div>
 
-        <div id="chapterCount">
-          CHECKING...
+        <span
+          class="chapter-count"
+          id="chapterCount"
+        >
+          Checking availability...
+        </span>
+
+      </div>
+
+      <div class="chapter-availability">
+
+        <span class="availability-dot"></span>
+
+        <div>
+          <strong>
+            ENGLISH · MANGADEX
+          </strong>
+
+          <p>
+            Only chapters currently readable through the supported source are shown below.
+          </p>
         </div>
 
       </div>
@@ -127,9 +161,11 @@
         class="chapter-list"
         id="chapterList"
       >
-        <div class="status-msg">
-          Checking available chapters...
+
+        <div class="loading-panel">
+          Checking readable chapters...
         </div>
+
       </div>
 
     </section>
@@ -140,21 +176,21 @@
 
     <div class="footer-brand">
 
-      <span class="brand-mark mini">
-        <span>P</span>
-      </span>
+      <div class="brand-mark">
+        P
+      </div>
 
       <div>
         <strong>Panelly</strong>
         <p>
-          Every story starts with a panel.
+          Availability-first manga discovery.
         </p>
       </div>
 
     </div>
 
     <p class="footer-note">
-      Availability differs between series and chapter providers.
+      Chapter availability depends on MangaDex and its currently available English releases.
     </p>
 
     <span class="footer-page">
@@ -162,25 +198,6 @@
     </span>
 
   </footer>
-
-  <nav class="mobile-nav">
-
-    <a href="index.html">
-      <span>⌂</span>
-      Home
-    </a>
-
-    <a href="index.html#mainPanels">
-      <span>▦</span>
-      Browse
-    </a>
-
-    <a href="index.html#shelfSection">
-      <span>▱</span>
-      Shelf
-    </a>
-
-  </nav>
 
   <script src="detail.js"></script>
 
