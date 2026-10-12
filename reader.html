@@ -8,12 +8,22 @@
     content="width=device-width, initial-scale=1.0"
   >
 
+  <meta
+    name="theme-color"
+    content="#0b0b0b"
+  >
+
   <title>Reader — Panelly</title>
 
   <link
     rel="icon"
     type="image/png"
     href="favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="apple-touch-icon.png"
   >
 
   <link
@@ -28,7 +38,7 @@
   >
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   >
 
@@ -43,98 +53,89 @@
   <header class="reader-header">
 
     <a
-      class="reader-brand"
+      class="reader-back"
+      id="backToSeries"
       href="index.html"
     >
-      <span class="brand-mark">
-        <span>P</span>
-      </span>
-
-      <span>
-        Panelly
-      </span>
+      ← Series
     </a>
 
-    <div class="reader-info">
+    <div class="reader-title-wrap">
 
       <strong id="readerTitle">
-        Opening chapter...
+        Panelly Reader
       </strong>
 
-      <small id="chapterMeta">
-        PANELLY READER
-      </small>
+      <span id="readerChapter">
+        Loading chapter...
+      </span>
 
     </div>
 
-    <a
-      class="reader-exit"
-      id="backSeries"
-      href="index.html"
-    >
-      EXIT READER
-    </a>
+    <div class="reader-navigation">
+
+      <a
+        id="prevChapter"
+        class="disabled"
+        href="#"
+      >
+        ← Prev
+      </a>
+
+      <a
+        id="nextChapter"
+        class="disabled"
+        href="#"
+      >
+        Next →
+      </a>
+
+    </div>
 
   </header>
 
-  <div class="reader-progress">
-    <span id="progressBar"></span>
+  <div class="reader-progress-track">
+    <div
+      class="reader-progress"
+      id="readerProgress"
+    ></div>
   </div>
 
-  <main class="reader-main">
+  <main>
 
     <div
       class="reader-status"
       id="readerStatus"
     >
-      INKING PAGES...
+      Loading chapter pages...
     </div>
 
     <div
       class="reader-pages"
-      id="pages"
+      id="readerPages"
     ></div>
 
-    <section
-      class="reader-end hidden"
-      id="readerEnd"
-    >
+    <div class="reader-bottom">
 
-      <span class="reader-end-label">
+      <a
+        id="bottomPrev"
+        href="#"
+      >
+        ← Previous Chapter
+      </a>
+
+      <span>
         END OF CHAPTER
       </span>
 
-      <h2 id="endTitle">
-        Continue the story.
-      </h2>
+      <a
+        id="bottomNext"
+        href="#"
+      >
+        Next Chapter →
+      </a>
 
-      <div class="reader-controls">
-
-        <a
-          class="reader-control disabled"
-          id="prevBtn"
-        >
-          ← PREVIOUS
-        </a>
-
-        <a
-          class="reader-control"
-          id="seriesBtn"
-          href="index.html"
-        >
-          SERIES FILE
-        </a>
-
-        <a
-          class="reader-control next disabled"
-          id="nextBtn"
-        >
-          NEXT →
-        </a>
-
-      </div>
-
-    </section>
+    </div>
 
   </main>
 
