@@ -8,57 +8,17 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Panelly — Discover & Read Manga</title>
-
   <meta
     name="description"
-    content="Discover manga, browse by genre, explore series details, save favorites, and continue reading available chapters with Panelly."
+    content="Panelly is an availability-first, account-free manga discovery and reading website."
   >
 
   <meta
-    name="robots"
-    content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    name="theme-color"
+    content="#f2eee5"
   >
 
-  <link
-    rel="canonical"
-    href="https://panelly-delta.vercel.app/"
-  >
-
-  <meta
-    property="og:type"
-    content="website"
-  >
-
-  <meta
-    property="og:title"
-    content="Panelly — Discover & Read Manga"
-  >
-
-  <meta
-    property="og:description"
-    content="Discover manga, browse series, save favorites, and read available chapters with Panelly."
-  >
-
-  <meta
-    property="og:url"
-    content="https://panelly-delta.vercel.app/"
-  >
-
-  <meta
-    name="twitter:card"
-    content="summary"
-  >
-
-  <meta
-    name="twitter:title"
-    content="Panelly — Discover & Read Manga"
-  >
-
-  <meta
-    name="twitter:description"
-    content="Discover manga, browse series, save favorites, and read available chapters with Panelly."
-  >
+  <title>Panelly — Discover & Read Manga</title>
 
   <link
     rel="icon"
@@ -68,7 +28,7 @@
 
   <link
     rel="apple-touch-icon"
-    href="favicon.png"
+    href="apple-touch-icon.png"
   >
 
   <link
@@ -83,7 +43,7 @@
   >
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   >
 
@@ -102,20 +62,27 @@
       href="index.html"
       aria-label="Panelly home"
     >
-      <span class="brand-mark">
-        <span>P</span>
-      </span>
+      <div class="brand-mark">
+        P
+      </div>
 
-      <span class="brand-copy">
+      <div>
         <strong>Panelly</strong>
-        <small>READ BETWEEN THE LINES.</small>
-      </span>
+        <span>READ BETWEEN THE LINES.</span>
+      </div>
     </a>
 
     <form
       class="header-search"
       id="searchForm"
     >
+      <label
+        class="sr-only"
+        for="searchInput"
+      >
+        Search manga
+      </label>
+
       <input
         id="searchInput"
         type="search"
@@ -132,11 +99,11 @@
     </form>
 
     <nav class="desktop-nav">
-      <a href="#mainPanels">
+      <a href="#browseSection">
         Discover
       </a>
 
-      <a href="#freshPrint">
+      <a href="#freshSection">
         Fresh
       </a>
 
@@ -149,23 +116,17 @@
 
   <main>
 
-    <section class="hero-shell">
-
-      <div class="issue-stamp">
-        <span>ISSUE</span>
-        <strong>001</strong>
+    <section
+      class="hero"
+      id="hero"
+    >
+      <div class="hero-loading">
+        Loading a readable series...
       </div>
-
-      <div
-        class="main-feature"
-        id="hero"
-        aria-live="polite"
-      ></div>
-
     </section>
 
     <section
-      class="continue-section hidden"
+      class="personal-section hidden-section"
       id="continueSection"
     >
 
@@ -173,53 +134,46 @@
 
         <div>
           <span class="section-number">
-            01
-          </span>
-
-          <span class="section-kicker">
-            PICK UP WHERE YOU LEFT OFF
+            YOUR FILE
           </span>
 
           <h2>
-            Continue Your Story
+            Continue Reading
           </h2>
         </div>
 
-        <span class="side-note">
-          LAST READ
-        </span>
+        <p>
+          Stored only in this browser.
+        </p>
 
       </div>
 
       <div
-        class="continue-strip"
+        class="continue-grid"
         id="continueGrid"
       ></div>
 
     </section>
 
     <section
-      class="manga-section"
-      id="mainPanels"
+      class="browse-section"
+      id="browseSection"
     >
 
       <div class="section-heading">
 
         <div>
           <span class="section-number">
-            02
+            02 / CURRENTLY MAKING NOISE
           </span>
 
-          <span class="section-kicker">
-            CURRENTLY MAKING NOISE
-          </span>
-
-          <h2>
+          <h2 id="gridTitle">
             Main Panels
           </h2>
         </div>
 
-        <div class="genre-box">
+        <div class="browse-filter">
+
           <label for="genreFilter">
             BROWSE FRAME
           </label>
@@ -229,66 +183,81 @@
               All genres
             </option>
           </select>
+
+        </div>
+
+      </div>
+
+      <div class="availability-note">
+
+        <span class="availability-dot"></span>
+
+        <div>
+          <strong>
+            READABLE NOW
+          </strong>
+
+          <p>
+            Results prioritize titles with English chapters currently available through MangaDex.
+          </p>
         </div>
 
       </div>
 
       <div
-        class="panel-grid"
-        id="grid"
-        aria-live="polite"
-      ></div>
-
-    </section>
-
-    <section class="intermission-panel">
-
-      <span class="intermission-label">
-        BREAK THE ROUTINE
-      </span>
-
-      <div>
-        <span class="giant-question">
-          ?
-        </span>
-
-        <div>
-          <h2>
-            Don't know what to read?
-          </h2>
-
-          <p>
-            Let the ink decide your next series.
-          </p>
+        class="manga-grid"
+        id="mangaGrid"
+      >
+        <div class="loading-panel">
+          Loading panels...
         </div>
       </div>
 
+    </section>
+
+    <section class="roulette-section">
+
+      <div class="roulette-symbol">
+        ?
+      </div>
+
+      <div>
+
+        <span class="section-number">
+          BREAK THE ROUTINE
+        </span>
+
+        <h2>
+          Don't know what to read?
+        </h2>
+
+        <p>
+          Let the ink decide your next readable series.
+        </p>
+
+      </div>
+
       <button
-        class="roulette-btn"
+        class="roulette-button"
         id="rouletteBtn"
         type="button"
       >
-        <span>SPIN</span>
-        Ink Roulette
-        <b>→</b>
+        SPIN
+        <span>Ink Roulette →</span>
       </button>
 
     </section>
 
     <section
-      class="manga-section fresh-section"
-      id="freshPrint"
+      class="fresh-section"
+      id="freshSection"
     >
 
       <div class="section-heading">
 
         <div>
           <span class="section-number">
-            03
-          </span>
-
-          <span class="section-kicker">
-            NEW LINES ON THE PAGE
+            03 / NEW LINES ON THE PAGE
           </span>
 
           <h2>
@@ -296,22 +265,25 @@
           </h2>
         </div>
 
-        <span class="side-note">
+        <p>
           RECENTLY UPDATED
-        </span>
+        </p>
 
       </div>
 
       <div
-        class="panel-grid fresh-grid"
+        class="fresh-grid"
         id="freshGrid"
-        aria-live="polite"
-      ></div>
+      >
+        <div class="loading-panel">
+          Checking recent chapters...
+        </div>
+      </div>
 
     </section>
 
     <section
-      class="manga-section shelf-section hidden"
+      class="personal-section hidden-section"
       id="shelfSection"
     >
 
@@ -319,11 +291,7 @@
 
         <div>
           <span class="section-number">
-            04
-          </span>
-
-          <span class="section-kicker">
-            SAVED FOR LATER
+            YOUR ARCHIVE
           </span>
 
           <h2>
@@ -331,9 +299,9 @@
           </h2>
         </div>
 
-        <span class="side-note">
-          YOUR COLLECTION
-        </span>
+        <p>
+          No account required.
+        </p>
 
       </div>
 
@@ -344,19 +312,52 @@
 
     </section>
 
+    <section class="about-strip">
+
+      <div>
+        <span>
+          AVAILABILITY-FIRST
+        </span>
+
+        <strong>
+          Find something you can actually read.
+        </strong>
+      </div>
+
+      <div>
+        <span>
+          ACCOUNT-FREE
+        </span>
+
+        <strong>
+          No login. No profile setup.
+        </strong>
+      </div>
+
+      <div>
+        <span>
+          LOCAL PROGRESS
+        </span>
+
+        <strong>
+          Your shelf stays in your browser.
+        </strong>
+      </div>
+
+    </section>
+
   </main>
 
   <footer class="site-footer">
 
     <div class="footer-brand">
 
-      <span class="brand-mark mini">
-        <span>P</span>
-      </span>
+      <div class="brand-mark">
+        P
+      </div>
 
       <div>
         <strong>Panelly</strong>
-
         <p>
           One story. One panel at a time.
         </p>
@@ -365,8 +366,8 @@
     </div>
 
     <p class="footer-note">
-      Manga metadata is provided by external catalog services.
-      Reading availability depends on compatible chapter providers.
+      Manga metadata and chapter availability are provided dynamically through supported external services.
+      Panelly does not maintain its own manga library.
     </p>
 
     <span class="footer-page">
@@ -377,15 +378,26 @@
 
   <nav class="mobile-nav">
 
-    <a href="index.html">
+    <a
+      href="index.html"
+      class="active"
+    >
       <span>⌂</span>
       Home
     </a>
 
-    <a href="#mainPanels">
+    <a href="#browseSection">
       <span>▦</span>
       Browse
     </a>
+
+    <button
+      id="mobileRouletteBtn"
+      type="button"
+    >
+      <span>?</span>
+      Random
+    </button>
 
     <a href="#shelfSection">
       <span>▱</span>
