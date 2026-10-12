@@ -1,28 +1,86 @@
-const BOOKMARK_KEY = "panellyBookmarks";
-const CONTINUE_KEY = "panellyContinueReading";
+const CONTENT_RATING = [
+  "safe",
+  "suggestive"
+];
 
-const heroEl = document.getElementById("hero");
-const gridEl = document.getElementById("grid");
-const freshGridEl = document.getElementById("freshGrid");
+const BOOKMARK_KEY =
+  "panellyBookmarks";
 
-const searchForm = document.getElementById("searchForm");
-const searchInput = document.getElementById("searchInput");
+const CONTINUE_KEY =
+  "panellyContinueReading";
 
-const genreFilter = document.getElementById("genreFilter");
+const heroEl =
+  document.getElementById(
+    "hero"
+  );
 
-const continueSection = document.getElementById("continueSection");
-const continueGrid = document.getElementById("continueGrid");
+const gridEl =
+  document.getElementById(
+    "mangaGrid"
+  );
 
-const shelfSection = document.getElementById("shelfSection");
-const shelfGrid = document.getElementById("shelfGrid");
+const freshGridEl =
+  document.getElementById(
+    "freshGrid"
+  );
 
-const rouletteBtn = document.getElementById("rouletteBtn");
+const gridTitleEl =
+  document.getElementById(
+    "gridTitle"
+  );
 
-let browseItems = [];
-let freshItems = [];
+const searchForm =
+  document.getElementById(
+    "searchForm"
+  );
+
+const searchInput =
+  document.getElementById(
+    "searchInput"
+  );
+
+const genreFilterEl =
+  document.getElementById(
+    "genreFilter"
+  );
+
+const rouletteBtn =
+  document.getElementById(
+    "rouletteBtn"
+  );
+
+const mobileRouletteBtn =
+  document.getElementById(
+    "mobileRouletteBtn"
+  );
+
+const continueSection =
+  document.getElementById(
+    "continueSection"
+  );
+
+const continueGrid =
+  document.getElementById(
+    "continueGrid"
+  );
+
+const shelfSection =
+  document.getElementById(
+    "shelfSection"
+  );
+
+const shelfGrid =
+  document.getElementById(
+    "shelfGrid"
+  );
+
+let trendingPool = [];
+let currentBrowsePool = [];
 
 function escapeHtml(value) {
-  return String(value ?? "").replace(
+  return String(
+    value ?? ""
+  ).replace(
     /[&<>"']/g,
     (char) =>
       ({
@@ -35,723 +93,1090 @@ function escapeHtml(value) {
   );
 }
 
-function stripHtml(value) {
+function stripText(value) {
   if (!value) {
     return "";
   }
 
-  const parser = new DOMParser();
+  const parser =
+    new DOMParser();
 
-  const documentValue = parser.parseFromString(
-    value,
-    "text/html"
-  );
+  const documentValue =
+    parser.parseFromString(
+      value,
+      "text/html"
+    );
 
   return (
-    documentValue.body.textContent || ""
+    documentValue.body
+      .textContent || ""
   )
     .replace(/\s+/g, " ")
     .trim();
 }
 
+async function apiFetch(
+  pathAndQuery
+) {
+  const response =
+    await fetch(
+      `/api/mangadex?path=${encodeURIComponent(
+        pathAndQuery
+      )}`
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      `MangaDex request failed: ${response.status}`
+    );
+  }
+
+  return response;
+}
+
+function buildQuery(params) {
+  const parts = [];
+
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ""
+    ) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        parts.push(
+          `${key}[]=${encodeURIComponent(
+            item
+          )}`
+        );
+      });
+    } else {
+      parts.push(
+        `${key}=${encodeURIComponent(
+          value
+        )}`
+      );
+    }
+  }
+
+  return parts.join("&");
+}
+
 function getTitle(manga) {
+  const titles =
+    manga?.attributes?.title ||
+    {};
+
   return (
-    manga?.title?.english ||
-    manga?.title?.romaji ||
-    manga?.title?.native ||
+    titles.en ||
+    Object.values(titles)[0] ||
     "Untitled"
   );
 }
 
-function getCover(manga) {
+function getDescription(
+  manga
+) {
+  const descriptions =
+    manga?.attributes
+      ?.description ||
+    {};
+
+  return stripText(
+    descriptions.en ||
+    Object.values(
+      descriptions
+    )[0] ||
+    ""
+  ) ||
+    "No description available.";
+}
+
+function getTags(manga) {
   return (
-    manga?.coverImage?.extraLarge ||
-    manga?.coverImage?.large ||
-    manga?.coverImage?.medium ||
+    manga?.attributes?.tags ||
+    []
+  )
+    .map(
+      (tag) =>
+        tag?.attributes
+          ?.name?.en ||
+        Object.values(
+          tag?.attributes
+            ?.name ||
+          {}
+        )[0]
+    )
+    .filter(Boolean);
+}
+
+function getCoverFile(manga) {
+  const relationship =
+    manga?.relationships
+      ?.find(
+        (item) =>
+          item.type ===
+          "cover_art"
+      );
+
+  return (
+    relationship
+      ?.attributes
+      ?.fileName ||
     ""
   );
 }
 
-function getYear(manga) {
-  return manga?.startDate?.year || "—";
+function coverUrl(
+  mangaId,
+  fileName,
+  size = 256
+) {
+  if (
+    !mangaId ||
+    !fileName
+  ) {
+    return "";
+  }
+
+  const original =
+    `https://uploads.mangadex.org/covers/${mangaId}/${fileName}.${size}.jpg`;
+
+  return `/api/proxy-image?url=${encodeURIComponent(
+    original
+  )}`;
 }
 
-function getPrimaryGenre(manga) {
+function getMangaCover(
+  manga,
+  size = 256
+) {
+  return coverUrl(
+    manga.id,
+    getCoverFile(manga),
+    size
+  );
+}
+
+function getPrimaryGenre(
+  manga
+) {
   return (
-    manga?.genres?.[0] ||
+    getTags(manga)[0] ||
     "Manga"
   );
 }
 
-function getScore(manga) {
-  const score = Number(
-    manga?.averageScore
-  );
-
-  return score
-    ? `${score}%`
-    : "NEW";
-}
-
-async function fetchAniList(params = {}) {
-  const query =
-    new URLSearchParams({
-      mode: "browse"
-    });
-
-  Object.entries(params).forEach(
-    ([key, value]) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        value !== ""
-      ) {
-        query.set(key, value);
-      }
-    }
-  );
-
-  const response = await fetch(
-    `/api/anilist?${query.toString()}`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `AniList request failed: ${response.status}`
-    );
-  }
-
-  return response.json();
-}
-
-async function fetchGenres() {
-  const response = await fetch(
-    "/api/anilist?mode=genres"
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "Genre request failed"
-    );
-  }
-
-  return response.json();
-}
-
-function createPanelCard(
-  manga,
-  index
+function validMangaDexId(
+  id
 ) {
-  const title = getTitle(manga);
-  const cover = getCover(manga);
-  const genre = getPrimaryGenre(manga);
-  const year = getYear(manga);
-  const score = getScore(manga);
-
-  const number =
-    String(index + 1).padStart(
-      2,
-      "0"
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(
+      String(id || "")
     );
-
-  return `
-    <a
-      class="panel-card ${
-        index === 0
-          ? "panel-card-wide"
-          : ""
-      }"
-      href="detail.html?id=${encodeURIComponent(
-        manga.id
-      )}"
-    >
-
-      <div class="panel-card-image">
-
-        ${
-          cover
-            ? `<img
-                src="${escapeHtml(cover)}"
-                alt="${escapeHtml(title)} cover"
-                loading="${
-                  index < 2
-                    ? "eager"
-                    : "lazy"
-                }"
-                decoding="async"
-                ${
-                  index < 2
-                    ? 'fetchpriority="high"'
-                    : ""
-                }
-              >`
-            : `<div class="missing-cover">
-                NO COVER
-              </div>`
-        }
-
-        <span class="panel-index">
-          PANEL ${number}
-        </span>
-
-        <span class="score-badge">
-          ${escapeHtml(score)}
-        </span>
-
-      </div>
-
-      <div class="panel-card-copy">
-
-        <span class="panel-card-meta">
-          ${escapeHtml(genre)}
-          <b>•</b>
-          ${escapeHtml(year)}
-        </span>
-
-        <h3>
-          ${escapeHtml(title)}
-        </h3>
-
-        <span class="open-file">
-          OPEN SERIES
-          <b>→</b>
-        </span>
-
-      </div>
-
-    </a>
-  `;
 }
 
-function renderHero(manga) {
-  if (!manga) {
-    heroEl.innerHTML = `
-      <div class="empty-panel">
-        NO FEATURED SERIES FOUND
-      </div>
-    `;
-
-    return;
-  }
-
-  const title = getTitle(manga);
-  const cover = getCover(manga);
-
-  const description =
-    stripHtml(
-      manga.description
-    ) ||
-    "Open the series file to learn more.";
-
-  const genres =
-    Array.isArray(manga.genres)
-      ? manga.genres.slice(0, 4)
-      : [];
-
-  heroEl.innerHTML = `
-    <div class="feature-art">
-
-      ${
-        cover
-          ? `<img
-              src="${escapeHtml(cover)}"
-              alt="${escapeHtml(title)} cover"
-              fetchpriority="high"
-            >`
-          : `<div class="missing-cover">
-              NO COVER
-            </div>`
-      }
-
-      <div class="feature-halftone"></div>
-
-      <span class="feature-label">
-        FEATURED SERIES
-      </span>
-
-    </div>
-
-    <div class="feature-copy">
-
-      <span class="feature-kicker">
-        THIS WEEK'S MAIN PANEL
-      </span>
-
-      <h1>
-        ${escapeHtml(title)}
-      </h1>
-
-      <div class="feature-tags">
-        ${genres
-          .map(
-            (genre) =>
-              `<span>${escapeHtml(
-                genre
-              )}</span>`
-          )
-          .join("")}
-      </div>
-
-      <p>
-        ${escapeHtml(
-          description.length > 320
-            ? `${description.slice(
-                0,
-                320
-              )}...`
-            : description
-        )}
-      </p>
-
-      <div class="feature-bottom">
-
-        <a
-          class="primary-cta"
-          href="detail.html?id=${encodeURIComponent(
-            manga.id
-          )}"
-        >
-          OPEN SERIES FILE
-          <b>→</b>
-        </a>
-
-        <div class="feature-stat">
-          <span>
-            SCORE
-          </span>
-
-          <strong>
-            ${escapeHtml(
-              getScore(manga)
-            )}
-          </strong>
-        </div>
-
-      </div>
-
-    </div>
-  `;
-}
-
-function safeStorageArray(key) {
+function readStorage(key) {
   try {
-    const value = JSON.parse(
-      localStorage.getItem(key) ||
-      "[]"
-    );
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          key
+        ) ||
+        "[]"
+      );
 
-    return Array.isArray(value)
-      ? value
-      : [];
+    if (
+      Array.isArray(value)
+    ) {
+      return value;
+    }
+
+    return [];
   } catch {
     return [];
   }
 }
 
-function getStoredMediaId(item) {
-  const id =
-    Number(
-      item?.anilistId ??
-      item?.mediaId ??
-      item?.id
+async function fetchGenres() {
+  const response =
+    await apiFetch(
+      "/manga/tag"
     );
 
-  return Number.isInteger(id)
-    ? id
-    : null;
-}
+  const json =
+    await response.json();
 
-function renderContinueReading() {
-  const items =
-    safeStorageArray(
-      CONTINUE_KEY
+  return (
+    json.data || []
+  )
+    .filter(
+      (tag) =>
+        tag?.attributes
+          ?.group ===
+        "genre"
     )
-      .filter(
-        (item) =>
-          getStoredMediaId(item) &&
-          item.chapterId
-      )
-      .slice(0, 5);
-
-  if (!items.length) {
-    continueSection.classList.add(
-      "hidden"
-    );
-
-    return;
-  }
-
-  continueSection.classList.remove(
-    "hidden"
-  );
-
-  continueGrid.innerHTML =
-    items
-      .map((item, index) => {
-        const mediaId =
-          getStoredMediaId(item);
-
-        const title =
-          item.mangaTitle ||
-          item.title ||
-          "Untitled";
-
-        const chapter =
-          item.chapterLabel ||
-          "Continue reading";
-
-        const cover =
-          item.coverUrl || "";
-
-        return `
-          <a
-            class="continue-card"
-            href="reader.html?chapterId=${encodeURIComponent(
-              item.chapterId
-            )}&mediaId=${encodeURIComponent(
-              mediaId
-            )}"
-          >
-
-            <div class="continue-number">
-              ${String(
-                index + 1
-              ).padStart(
-                2,
-                "0"
-              )}
-            </div>
-
-            <div class="continue-cover">
-
-              ${
-                cover
-                  ? `<img
-                      src="${escapeHtml(
-                        cover
-                      )}"
-                      alt="${escapeHtml(
-                        title
-                      )}"
-                      loading="lazy"
-                    >`
-                  : ""
-              }
-
-            </div>
-
-            <div class="continue-copy">
-
-              <span>
-                CONTINUE
-              </span>
-
-              <strong>
-                ${escapeHtml(title)}
-              </strong>
-
-              <small>
-                ${escapeHtml(chapter)}
-              </small>
-
-            </div>
-
-            <b class="continue-arrow">
-              →
-            </b>
-
-          </a>
-        `;
+    .map(
+      (tag) => ({
+        id: tag.id,
+        name:
+          tag?.attributes
+            ?.name?.en ||
+          Object.values(
+            tag?.attributes
+              ?.name ||
+            {}
+          )[0]
       })
-      .join("");
-}
-
-function renderShelf() {
-  const items =
-    safeStorageArray(
-      BOOKMARK_KEY
     )
-      .filter(
-        (item) =>
-          getStoredMediaId(item)
-      )
-      .slice(0, 8);
-
-  if (!items.length) {
-    shelfSection.classList.add(
-      "hidden"
+    .filter(
+      (tag) =>
+        tag.name
+    )
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(
+          b.name
+        )
     );
-
-    return;
-  }
-
-  shelfSection.classList.remove(
-    "hidden"
-  );
-
-  shelfGrid.innerHTML =
-    items
-      .map((item, index) => {
-        const mediaId =
-          getStoredMediaId(item);
-
-        const title =
-          item.mangaTitle ||
-          item.title ||
-          "Untitled";
-
-        const cover =
-          item.coverUrl || "";
-
-        return `
-          <a
-            class="shelf-card"
-            href="detail.html?id=${encodeURIComponent(
-              mediaId
-            )}"
-          >
-
-            <span class="shelf-number">
-              ${String(
-                index + 1
-              ).padStart(
-                2,
-                "0"
-              )}
-            </span>
-
-            <div class="shelf-cover">
-
-              ${
-                cover
-                  ? `<img
-                      src="${escapeHtml(
-                        cover
-                      )}"
-                      alt="${escapeHtml(
-                        title
-                      )}"
-                      loading="lazy"
-                    >`
-                  : ""
-              }
-
-            </div>
-
-            <strong>
-              ${escapeHtml(title)}
-            </strong>
-
-          </a>
-        `;
-      })
-      .join("");
 }
 
 async function populateGenres() {
   try {
-    const json =
+    const genres =
       await fetchGenres();
 
-    const genres =
-      Array.isArray(json.genres)
-        ? json.genres
-        : [];
+    genres.forEach(
+      (genre) => {
+        const option =
+          document.createElement(
+            "option"
+          );
 
-    genreFilter.innerHTML = `
-      <option value="">
-        All genres
-      </option>
+        option.value =
+          genre.id;
 
-      ${genres
-        .map(
-          (genre) =>
-            `<option value="${escapeHtml(
-              genre
-            )}">
-              ${escapeHtml(
-                genre
-              )}
-            </option>`
-        )
-        .join("")}
-    `;
+        option.textContent =
+          genre.name;
+
+        genreFilterEl.appendChild(
+          option
+        );
+      }
+    );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Genre loading failed:",
+      error
+    );
   }
 }
 
-async function loadBrowse() {
-  gridEl.innerHTML = `
-    <div class="loading-block">
-      <span>LOADING PANELS...</span>
+async function fetchManga({
+  title,
+  tagId,
+  limit = 15,
+  order = "followedCount"
+} = {}) {
+  const params = {
+    limit,
+    includes: [
+      "cover_art"
+    ],
+    contentRating:
+      CONTENT_RATING,
+    availableTranslatedLanguage:
+      ["en"],
+    hasAvailableChapters:
+      true
+  };
+
+  if (title) {
+    params.title = title;
+    params[
+      "order[relevance]"
+    ] = "desc";
+  } else {
+    params[
+      `order[${order}]`
+    ] = "desc";
+  }
+
+  if (tagId) {
+    params.includedTags = [
+      tagId
+    ];
+  }
+
+  const response =
+    await apiFetch(
+      `/manga?${buildQuery(
+        params
+      )}`
+    );
+
+  const json =
+    await response.json();
+
+  return Array.isArray(
+    json.data
+  )
+    ? json.data
+    : [];
+}
+
+function renderHero(
+  manga,
+  number = 1
+) {
+  if (!manga) {
+    heroEl.innerHTML = `
+      <div class="hero-loading">
+        No readable featured manga found.
+      </div>
+    `;
+
+    return;
+  }
+
+  const title =
+    getTitle(manga);
+
+  const description =
+    getDescription(manga);
+
+  const tags =
+    getTags(manga)
+      .slice(0, 4);
+
+  const cover =
+    getMangaCover(
+      manga,
+      512
+    );
+
+  heroEl.innerHTML = `
+    <div class="hero-inner">
+
+      <div class="hero-copy">
+
+        <span class="hero-series-label">
+          ISSUE 001 / READABLE NOW
+        </span>
+
+        <h1 class="hero-title">
+          ${escapeHtml(title)}
+        </h1>
+
+        <div class="hero-meta">
+          ${tags
+            .map(
+              (tag) => `
+                <span class="hero-tag">
+                  ${escapeHtml(tag)}
+                </span>
+              `
+            )
+            .join("")}
+        </div>
+
+        <p class="hero-description">
+          ${escapeHtml(
+            description
+          )}
+        </p>
+
+        <div class="hero-actions">
+
+          <a
+            class="hero-primary"
+            href="detail.html?id=${encodeURIComponent(
+              manga.id
+            )}"
+          >
+            Open Series File →
+          </a>
+
+          <a
+            class="hero-secondary"
+            href="#browseSection"
+          >
+            Browse More
+          </a>
+
+        </div>
+
+      </div>
+
+      <div class="hero-art">
+
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  title
+                )} cover"
+              >
+            `
+            : `
+              <div class="image-fallback"></div>
+            `
+        }
+
+        <span class="hero-number">
+          ${String(
+            number
+          ).padStart(
+            2,
+            "0"
+          )}
+        </span>
+
+      </div>
+
+    </div>
+  `;
+}
+
+function createMangaCard(
+  manga,
+  index
+) {
+  const card =
+    document.createElement(
+      "article"
+    );
+
+  card.className =
+    "manga-card";
+
+  card.tabIndex = 0;
+
+  const title =
+    getTitle(manga);
+
+  const cover =
+    getMangaCover(
+      manga,
+      256
+    );
+
+  const genre =
+    getPrimaryGenre(
+      manga
+    );
+
+  card.innerHTML = `
+    <div class="card-cover-wrap">
+
+      <span class="card-number">
+        PANEL ${String(
+          index + 1
+        ).padStart(
+          2,
+          "0"
+        )}
+      </span>
+
+      ${
+        cover
+          ? `
+            <img
+              src="${escapeHtml(
+                cover
+              )}"
+              alt="${escapeHtml(
+                title
+              )} cover"
+              loading="lazy"
+              decoding="async"
+            >
+          `
+          : `
+            <div class="image-fallback"></div>
+          `
+      }
+
+      <span class="card-readable">
+        READABLE
+      </span>
+
+    </div>
+
+    <div class="card-info">
+
+      <h3 class="card-title">
+        ${escapeHtml(title)}
+      </h3>
+
+      <div class="card-meta">
+
+        <span>
+          ${escapeHtml(genre)}
+        </span>
+
+        <span class="card-arrow">
+          →
+        </span>
+
+      </div>
+
     </div>
   `;
 
-  const params = {
-    perPage: 10,
-    sort: "trending"
+  const open = () => {
+    window.location.href =
+      `detail.html?id=${encodeURIComponent(
+        manga.id
+      )}`;
   };
 
-  const search =
-    searchInput.value.trim();
+  card.addEventListener(
+    "click",
+    open
+  );
 
-  const genre =
-    genreFilter.value;
+  card.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key ===
+          "Enter" ||
+        event.key ===
+          " "
+      ) {
+        event.preventDefault();
+        open();
+      }
+    }
+  );
 
-  if (search) {
-    params.search = search;
+  return card;
+}
+
+function renderBrowse(
+  mangaList
+) {
+  gridEl.innerHTML = "";
+
+  currentBrowsePool =
+    mangaList;
+
+  if (!mangaList.length) {
+    gridEl.innerHTML = `
+      <p class="status-msg">
+        No readable manga matched your search.
+      </p>
+    `;
+
+    return;
   }
 
-  if (genre) {
-    params.genre = genre;
-  }
-
-  try {
-    const json =
-      await fetchAniList(
-        params
+  mangaList.forEach(
+    (manga, index) => {
+      gridEl.appendChild(
+        createMangaCard(
+          manga,
+          index
+        )
       );
+    }
+  );
+}
 
-    browseItems =
-      Array.isArray(json.manga)
-        ? json.manga
-        : [];
+function renderFresh(
+  mangaList
+) {
+  freshGridEl.innerHTML =
+    "";
 
-    if (!browseItems.length) {
-      renderHero(null);
+  if (!mangaList.length) {
+    freshGridEl.innerHTML = `
+      <p class="status-msg">
+        No recent readable updates found.
+      </p>
+    `;
 
-      gridEl.innerHTML = `
-        <div class="empty-panel">
-          NO PANELS FOUND
+    return;
+  }
+
+  mangaList.forEach(
+    (manga, index) => {
+      const title =
+        getTitle(manga);
+
+      const cover =
+        getMangaCover(
+          manga,
+          256
+        );
+
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "fresh-card";
+
+      card.href =
+        `detail.html?id=${encodeURIComponent(
+          manga.id
+        )}`;
+
+      card.innerHTML = `
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  title
+                )} cover"
+                loading="lazy"
+              >
+            `
+            : `
+              <div class="image-fallback"></div>
+            `
+        }
+
+        <div class="fresh-info">
+
+          <span class="fresh-label">
+            FRESH INK ${String(
+              index + 1
+            ).padStart(
+              2,
+              "0"
+            )}
+          </span>
+
+          <span class="fresh-title">
+            ${escapeHtml(
+              title
+            )}
+          </span>
+
+          <span class="fresh-action">
+            VIEW SERIES →
+          </span>
+
         </div>
       `;
 
-      return;
+      freshGridEl.appendChild(
+        card
+      );
     }
+  );
+}
 
-    renderHero(
-      browseItems[0]
+function storedCover(
+  item
+) {
+  if (
+    item.coverFile &&
+    validMangaDexId(
+      item.mangaId
+    )
+  ) {
+    return coverUrl(
+      item.mangaId,
+      item.coverFile,
+      256
+    );
+  }
+
+  return "";
+}
+
+function renderContinueReading() {
+  const items =
+    readStorage(
+      CONTINUE_KEY
+    )
+      .filter(
+        (item) =>
+          validMangaDexId(
+            item.mangaId
+          )
+      )
+      .sort(
+        (a, b) =>
+          Number(
+            b.updatedAt ||
+            0
+          ) -
+          Number(
+            a.updatedAt ||
+            0
+          )
+      )
+      .slice(0, 6);
+
+  if (!items.length) {
+    continueSection
+      .classList.add(
+        "hidden-section"
+      );
+
+    return;
+  }
+
+  continueSection
+    .classList.remove(
+      "hidden-section"
     );
 
-    gridEl.innerHTML =
-      browseItems
-        .slice(1)
-        .map(
-          (manga, index) =>
-            createPanelCard(
-              manga,
-              index
+  continueGrid.innerHTML =
+    "";
+
+  items.forEach(
+    (item) => {
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "continue-card";
+
+      card.href =
+        item.chapterId
+          ? `reader.html?chapterId=${encodeURIComponent(
+              item.chapterId
+            )}&mangaId=${encodeURIComponent(
+              item.mangaId
+            )}`
+          : `detail.html?id=${encodeURIComponent(
+              item.mangaId
+            )}`;
+
+      const cover =
+        storedCover(item);
+
+      const progress =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            Number(
+              item.progress ||
+              0
             )
-        )
-        .join("");
+          )
+        );
+
+      card.innerHTML = `
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  item.mangaTitle ||
+                  "Manga"
+                )} cover"
+              >
+            `
+            : ""
+        }
+
+        <div class="continue-info">
+
+          <span class="continue-label">
+            CONTINUE READING
+          </span>
+
+          <span class="continue-title">
+            ${escapeHtml(
+              item.mangaTitle ||
+              "Untitled"
+            )}
+          </span>
+
+          <span class="continue-chapter">
+            ${escapeHtml(
+              item.chapterLabel ||
+              "Continue"
+            )} →
+          </span>
+
+          <div class="reading-line">
+            <span
+              style="width:${progress}%"
+            ></span>
+          </div>
+
+        </div>
+      `;
+
+      continueGrid
+        .appendChild(card);
+    }
+  );
+}
+
+function renderShelf() {
+  const items =
+    readStorage(
+      BOOKMARK_KEY
+    )
+      .filter(
+        (item) =>
+          validMangaDexId(
+            item.mangaId
+          )
+      )
+      .sort(
+        (a, b) =>
+          Number(
+            b.savedAt ||
+            0
+          ) -
+          Number(
+            a.savedAt ||
+            0
+          )
+      )
+      .slice(0, 9);
+
+  if (!items.length) {
+    shelfSection
+      .classList.add(
+        "hidden-section"
+      );
+
+    return;
+  }
+
+  shelfSection
+    .classList.remove(
+      "hidden-section"
+    );
+
+  shelfGrid.innerHTML = "";
+
+  items.forEach(
+    (item) => {
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "shelf-card";
+
+      card.href =
+        `detail.html?id=${encodeURIComponent(
+          item.mangaId
+        )}`;
+
+      const cover =
+        storedCover(item);
+
+      card.innerHTML = `
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  item.mangaTitle ||
+                  "Manga"
+                )} cover"
+              >
+            `
+            : ""
+        }
+
+        <div class="shelf-info">
+
+          <div class="shelf-title">
+            ${escapeHtml(
+              item.mangaTitle ||
+              "Untitled"
+            )}
+          </div>
+
+          <div class="shelf-label">
+            SAVED TO PANEL SHELF
+          </div>
+
+        </div>
+      `;
+
+      shelfGrid.appendChild(
+        card
+      );
+    }
+  );
+}
+
+async function loadBrowse() {
+  const term =
+    searchInput.value
+      .trim();
+
+  const tagId =
+    genreFilterEl.value ||
+    "";
+
+  const genreName =
+    tagId
+      ? genreFilterEl.options[
+          genreFilterEl
+            .selectedIndex
+        ].textContent
+      : "";
+
+  if (
+    term &&
+    genreName
+  ) {
+    gridTitleEl.textContent =
+      `"${term}" · ${genreName}`;
+  } else if (term) {
+    gridTitleEl.textContent =
+      `Search: ${term}`;
+  } else if (
+    genreName
+  ) {
+    gridTitleEl.textContent =
+      genreName;
+  } else {
+    gridTitleEl.textContent =
+      "Main Panels";
+  }
+
+  gridEl.innerHTML = `
+    <div class="loading-panel">
+      Looking for readable manga...
+    </div>
+  `;
+
+  try {
+    const mangaList =
+      await fetchManga({
+        title:
+          term ||
+          undefined,
+        tagId:
+          tagId ||
+          undefined,
+        limit: 15,
+        order:
+          "followedCount"
+      });
+
+    renderBrowse(
+      mangaList
+    );
+
+    if (
+      !term &&
+      !tagId
+    ) {
+      trendingPool =
+        mangaList;
+
+      if (
+        mangaList[0]
+      ) {
+        renderHero(
+          mangaList[0],
+          1
+        );
+      }
+    }
   } catch (error) {
     console.error(error);
 
-    heroEl.innerHTML = `
-      <div class="empty-panel">
-        COULDN'T LOAD FEATURED SERIES
-      </div>
+    gridEl.innerHTML = `
+      <p class="status-msg">
+        Panelly couldn't load manga right now.
+        Please try again.
+      </p>
     `;
 
-    gridEl.innerHTML = `
-      <div class="empty-panel">
-        COULDN'T LOAD MANGA RIGHT NOW
-      </div>
-    `;
+    if (
+      !trendingPool.length
+    ) {
+      heroEl.innerHTML = `
+        <div class="hero-loading">
+          Couldn't load the featured series.
+        </div>
+      `;
+    }
   }
 }
 
 async function loadFresh() {
   try {
-    const json =
-      await fetchAniList({
-        perPage: 8,
-        sort: "fresh"
+    const mangaList =
+      await fetchManga({
+        limit: 8,
+        order:
+          "latestUploadedChapter"
       });
 
-    freshItems =
-      Array.isArray(json.manga)
-        ? json.manga
-        : [];
-
-    if (!freshItems.length) {
-      freshGridEl.innerHTML = `
-        <div class="empty-panel">
-          NO RECENT TITLES FOUND
-        </div>
-      `;
-
-      return;
-    }
-
-    freshGridEl.innerHTML =
-      freshItems
-        .map(
-          (manga, index) =>
-            createPanelCard(
-              manga,
-              index
-            )
-        )
-        .join("");
+    renderFresh(
+      mangaList
+    );
   } catch (error) {
     console.error(error);
 
     freshGridEl.innerHTML = `
-      <div class="empty-panel">
-        COULDN'T LOAD RECENT TITLES
-      </div>
+      <p class="status-msg">
+        Couldn't load recent updates.
+      </p>
     `;
   }
 }
 
-function setupFreshObserver() {
-  const section =
-    document.getElementById(
-      "freshPrint"
-    );
+function runRoulette() {
+  const pool =
+    currentBrowsePool.length
+      ? currentBrowsePool
+      : trendingPool;
 
-  if (
-    !section ||
-    !("IntersectionObserver" in window)
-  ) {
-    loadFresh();
+  if (!pool.length) {
     return;
   }
 
-  const observer =
-    new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]
-            .isIntersecting
-        ) {
-          observer.disconnect();
-          loadFresh();
-        }
-      },
-      {
-        rootMargin: "500px"
-      }
+  const index =
+    Math.floor(
+      Math.random() *
+      pool.length
     );
 
-  observer.observe(section);
-}
+  renderHero(
+    pool[index],
+    index + 1
+  );
 
-function handleUrlSearch() {
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const search =
-    params.get("search");
-
-  if (search) {
-    searchInput.value =
-      search;
-  }
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
 }
 
 searchForm.addEventListener(
@@ -759,108 +1184,54 @@ searchForm.addEventListener(
   (event) => {
     event.preventDefault();
 
-    const value =
-      searchInput.value.trim();
-
-    const url =
-      new URL(
-        window.location.href
-      );
-
-    if (value) {
-      url.searchParams.set(
-        "search",
-        value
-      );
-    } else {
-      url.searchParams.delete(
-        "search"
-      );
-    }
-
-    window.history.replaceState(
-      {},
-      "",
-      url
-    );
-
     loadBrowse();
+
+    document
+      .getElementById(
+        "browseSection"
+      )
+      .scrollIntoView({
+        behavior: "smooth"
+      });
   }
 );
 
-genreFilter.addEventListener(
+genreFilterEl.addEventListener(
   "change",
-  () => {
-    loadBrowse();
-  }
+  loadBrowse
 );
 
 rouletteBtn.addEventListener(
   "click",
-  () => {
-    const pool = [
-      ...browseItems,
-      ...freshItems
-    ];
-
-    const unique =
-      Array.from(
-        new Map(
-          pool.map(
-            (item) => [
-              item.id,
-              item
-            ]
-          )
-        ).values()
-      );
-
-    if (!unique.length) {
-      return;
-    }
-
-    const manga =
-      unique[
-        Math.floor(
-          Math.random() *
-          unique.length
-        )
-      ];
-
-    window.location.href =
-      `detail.html?id=${encodeURIComponent(
-        manga.id
-      )}`;
-  }
+  runRoulette
 );
 
-handleUrlSearch();
+mobileRouletteBtn
+  .addEventListener(
+    "click",
+    runRoulette
+  );
+
+const urlParams =
+  new URLSearchParams(
+    window.location.search
+  );
+
+const initialSearch =
+  urlParams.get(
+    "search"
+  );
+
+if (initialSearch) {
+  searchInput.value =
+    initialSearch;
+}
 
 renderContinueReading();
 renderShelf();
 
-loadBrowse();
-
-if (
-  "requestIdleCallback" in
-  window
-) {
-  requestIdleCallback(
-    populateGenres
-  );
-} else {
-  setTimeout(
-    populateGenres,
-    300
-  );
-}
-
-setupFreshObserver();
-
-window.addEventListener(
-  "storage",
-  () => {
-    renderContinueReading();
-    renderShelf();
-  }
-);
+Promise.allSettled([
+  populateGenres(),
+  loadBrowse(),
+  loadFresh()
+]);
