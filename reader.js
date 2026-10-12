@@ -1,37 +1,24 @@
+const CONTINUE_KEY =
+  "panellyContinueReading";
+
 const CONTENT_RATING = [
   "safe",
   "suggestive"
 ];
-
-const CONTINUE_KEY =
-  "panellyContinueReading";
-
-const params =
-  new URLSearchParams(
-    window.location.search
-  );
-
-const chapterId =
-  params.get("chapterId");
-
-const mediaId =
-  Number(
-    params.get("mediaId")
-  ) || null;
 
 const readerTitle =
   document.getElementById(
     "readerTitle"
   );
 
-const chapterMeta =
+const readerChapter =
   document.getElementById(
-    "chapterMeta"
+    "readerChapter"
   );
 
-const pagesEl =
+const readerPages =
   document.getElementById(
-    "pages"
+    "readerPages"
   );
 
 const readerStatus =
@@ -39,154 +26,199 @@ const readerStatus =
     "readerStatus"
   );
 
-const progressBar =
+const backToSeries =
   document.getElementById(
-    "progressBar"
+    "backToSeries"
   );
 
-const backSeries =
+const prevChapter =
   document.getElementById(
-    "backSeries"
+    "prevChapter"
   );
 
-const seriesBtn =
+const nextChapter =
   document.getElementById(
-    "seriesBtn"
+    "nextChapter"
   );
 
-const prevBtn =
+const bottomPrev =
   document.getElementById(
-    "prevBtn"
+    "bottomPrev"
   );
 
-const nextBtn =
+const bottomNext =
   document.getElementById(
-    "nextBtn"
+    "bottomNext"
   );
 
-const readerEnd =
+const readerProgress =
   document.getElementById(
-    "readerEnd"
+    "readerProgress"
   );
 
-const endTitle =
-  document.getElementById(
-    "endTitle"
+let currentChapter = null;
+let currentManga = null;
+let currentMangaId = null;
+let currentChapterId = null;
+let chapterList = [];
+
+function escapeHtml(value) {
+  return String(
+    value ?? ""
+  ).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]
   );
+}
 
-let mangaTitle =
-  "Untitled";
+function parameters() {
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-let chapterLabel =
-  "Chapter";
+  return {
+    chapterId:
+      params.get(
+        "chapterId"
+      ),
+    mangaId:
+      params.get(
+        "mangaId"
+      )
+  };
+}
 
-let coverUrl = "";
-
-async function mangaDexFetch(path) {
-  const response = await fetch(
-    `/api/mangadex?path=${encodeURIComponent(
-      path
-    )}`
-  );
+async function apiFetch(
+  pathAndQuery
+) {
+  const response =
+    await fetch(
+      `/api/mangadex?path=${encodeURIComponent(
+        pathAndQuery
+      )}`
+    );
 
   if (!response.ok) {
     throw new Error(
-      `MangaDex failed: ${response.status}`
+      `MangaDex request failed: ${response.status}`
     );
   }
 
   return response;
 }
 
-function buildQuery(paramsValue) {
+function buildQuery(params) {
   const parts = [];
 
-  Object.entries(
-    paramsValue
-  ).forEach(
-    ([key, value]) => {
-      if (
-        value === undefined ||
-        value === null ||
-        value === ""
-      ) {
-        return;
-      }
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ""
+    ) {
+      continue;
+    }
 
-      if (Array.isArray(value)) {
-        value.forEach((item) => {
-          parts.push(
-            `${key}[]=${encodeURIComponent(
-              item
-            )}`
-          );
-        });
-      } else {
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
         parts.push(
-          `${key}=${encodeURIComponent(
-            value
+          `${key}[]=${encodeURIComponent(
+            item
           )}`
         );
-      }
+      });
+    } else {
+      parts.push(
+        `${key}=${encodeURIComponent(
+          value
+        )}`
+      );
     }
-  );
+  }
 
   return parts.join("&");
 }
 
-function safeUrl(value) {
-  if (!value) {
-    return null;
-  }
+function getTitle(manga) {
+  const titles =
+    manga?.attributes?.title ||
+    {};
 
-  try {
-    const url =
-      new URL(value);
-
-    if (
-      url.protocol === "http:" ||
-      url.protocol === "https:"
-    ) {
-      return url.toString();
-    }
-  } catch {}
-
-  return null;
-}
-
-function chapterNumber(
-  chapter
-) {
-  const number =
-    Number(
-      chapter?.attributes
-        ?.chapter
-    );
-
-  return Number.isFinite(number)
-    ? number
-    : null;
-}
-
-function isHosted(chapter) {
-  return !safeUrl(
-    chapter?.attributes
-      ?.externalUrl
+  return (
+    titles.en ||
+    Object.values(titles)[0] ||
+    "Untitled"
   );
 }
 
-async function fetchChapter() {
+function getCoverFile(
+  manga
+) {
+  return (
+    manga?.relationships
+      ?.find(
+        (relationship) =>
+          relationship.type ===
+          "cover_art"
+      )
+      ?.attributes
+      ?.fileName ||
+    ""
+  );
+}
+
+function getChapterLabel(
+  chapter
+) {
+  const number =
+    chapter?.attributes
+      ?.chapter;
+
+  const title =
+    chapter?.attributes
+      ?.title;
+
+  if (
+    number &&
+    title
+  ) {
+    return `Chapter ${number} — ${title}`;
+  }
+
+  if (number) {
+    return `Chapter ${number}`;
+  }
+
+  return title ||
+    "Special Chapter";
+}
+
+async function fetchChapter(
+  id
+) {
   const query =
     buildQuery({
       includes: [
-        "manga"
+        "manga",
+        "scanlation_group"
       ]
     });
 
   const response =
-    await mangaDexFetch(
+    await apiFetch(
       `/chapter/${encodeURIComponent(
-        chapterId
+        id
       )}?${query}`
     );
 
@@ -196,69 +228,70 @@ async function fetchChapter() {
   return json.data;
 }
 
-async function fetchAniListMedia() {
-  if (!mediaId) {
-    return null;
-  }
+async function fetchManga(
+  id
+) {
+  const query =
+    buildQuery({
+      includes: [
+        "cover_art"
+      ]
+    });
 
-  try {
-    const response =
-      await fetch(
-        `/api/anilist?mode=detail&id=${encodeURIComponent(
-          mediaId
-        )}`
-      );
+  const response =
+    await apiFetch(
+      `/manga/${encodeURIComponent(
+        id
+      )}?${query}`
+    );
 
-    if (!response.ok) {
-      return null;
-    }
+  const json =
+    await response.json();
 
-    const json =
-      await response.json();
-
-    return json.manga;
-  } catch {
-    return null;
-  }
+  return json.data;
 }
 
-function getAniListTitle(manga) {
-  return (
-    manga?.title?.english ||
-    manga?.title?.romaji ||
-    manga?.title?.native ||
-    "Untitled"
-  );
+async function fetchAtHome(
+  chapterId
+) {
+  const response =
+    await apiFetch(
+      `/at-home/server/${encodeURIComponent(
+        chapterId
+      )}`
+    );
+
+  return await response.json();
 }
 
-async function fetchSiblingChapters(
-  mangaDexId
+async function fetchChapterList(
+  mangaId
 ) {
   const chapters = [];
 
   let offset = 0;
-  let total = 0;
+  const limit = 100;
+  let total = Infinity;
 
-  const limit = 500;
-
-  do {
+  while (
+    offset < total
+  ) {
     const query =
       buildQuery({
-        translatedLanguage: [
-          "en"
-        ],
-        "order[chapter]":
-          "asc",
+        translatedLanguage:
+          ["en"],
+        contentRating:
+          CONTENT_RATING,
         limit,
         offset,
-        contentRating:
-          CONTENT_RATING
+        "order[chapter]":
+          "asc"
       });
 
     const response =
-      await mangaDexFetch(
+      await apiFetch(
         `/manga/${encodeURIComponent(
-          mangaDexId
+          mangaId
         )}/feed?${query}`
       );
 
@@ -266,136 +299,188 @@ async function fetchSiblingChapters(
       await response.json();
 
     const batch =
-      Array.isArray(json.data)
+      Array.isArray(
+        json.data
+      )
         ? json.data
         : [];
 
-    chapters.push(...batch);
+    chapters.push(
+      ...batch.filter(
+        (chapter) =>
+          !chapter
+            ?.attributes
+            ?.externalUrl
+      )
+    );
 
     total =
-      Number(json.total) ||
+      Number(
+        json.total
+      ) ||
       chapters.length;
 
-    if (!batch.length) {
+    if (
+      !batch.length
+    ) {
       break;
     }
 
     offset += limit;
-  } while (
-    offset < total
-  );
+  }
 
-  const map =
+  return chapters;
+}
+
+function numericChapter(
+  chapter
+) {
+  const value =
+    Number(
+      chapter
+        ?.attributes
+        ?.chapter
+    );
+
+  return Number.isFinite(
+    value
+  )
+    ? value
+    : Infinity;
+}
+
+function sortedUniqueChapters(
+  chapters
+) {
+  const byNumber =
     new Map();
 
-  chapters
-    .filter(isHosted)
-    .forEach((chapter) => {
-      const number =
-        chapterNumber(chapter);
+  const specials = [];
 
-      if (number === null) {
+  chapters.forEach(
+    (chapter) => {
+      const value =
+        chapter?.attributes
+          ?.chapter;
+
+      if (
+        value === null ||
+        value === undefined ||
+        value === ""
+      ) {
+        specials.push(
+          chapter
+        );
+
         return;
       }
 
       const key =
-        String(number);
+        String(
+          Number(value)
+        );
 
-      if (!map.has(key)) {
-        map.set(
+      if (
+        !byNumber.has(key)
+      ) {
+        byNumber.set(
+          key,
+          chapter
+        );
+      } else if (
+        chapter.id ===
+        currentChapterId
+      ) {
+        byNumber.set(
           key,
           chapter
         );
       }
-    });
-
-  return Array.from(
-    map.values()
-  ).sort(
-    (a, b) =>
-      chapterNumber(a) -
-      chapterNumber(b)
+    }
   );
+
+  return [
+    ...Array.from(
+      byNumber.values()
+    ).sort(
+      (a, b) =>
+        numericChapter(a) -
+        numericChapter(b)
+    ),
+    ...specials
+  ];
 }
 
-async function fetchPages() {
-  const response =
-    await mangaDexFetch(
-      `/at-home/server/${encodeURIComponent(
-        chapterId
-      )}`
+function navigationUrl(
+  chapter
+) {
+  return `reader.html?chapterId=${encodeURIComponent(
+    chapter.id
+  )}&mangaId=${encodeURIComponent(
+    currentMangaId
+  )}`;
+}
+
+function setNavigationLink(
+  element,
+  chapter
+) {
+  if (!chapter) {
+    element.href = "#";
+
+    element.classList.add(
+      "disabled"
     );
 
-  return response.json();
-}
-
-function saveContinue() {
-  if (
-    !mediaId ||
-    !chapterId
-  ) {
     return;
   }
 
-  let items = [];
-
-  try {
-    const parsed =
-      JSON.parse(
-        localStorage.getItem(
-          CONTINUE_KEY
-        ) || "[]"
-      );
-
-    if (
-      Array.isArray(parsed)
-    ) {
-      items = parsed;
-    }
-  } catch {}
-
-  items =
-    items.filter(
-      (item) =>
-        Number(
-          item.mediaId ??
-          item.anilistId
-        ) !== mediaId
+  element.href =
+    navigationUrl(
+      chapter
     );
 
-  items.unshift({
-    mediaId,
-    anilistId: mediaId,
-    chapterId,
-    mangaTitle,
-    title: mangaTitle,
-    chapterLabel,
-    coverUrl,
-    updatedAt:
-      Date.now()
-  });
-
-  localStorage.setItem(
-    CONTINUE_KEY,
-    JSON.stringify(
-      items.slice(0, 20)
-    )
+  element.classList.remove(
+    "disabled"
   );
 }
 
-function setupNavigation(
-  chapters
-) {
-  const index =
-    chapters.findIndex(
+function configureNavigation() {
+  chapterList =
+    sortedUniqueChapters(
+      chapterList
+    );
+
+  let index =
+    chapterList.findIndex(
       (chapter) =>
         chapter.id ===
-        chapterId
+        currentChapterId
     );
+
+  if (index < 0) {
+    const currentNumber =
+      currentChapter
+        ?.attributes
+        ?.chapter;
+
+    index =
+      chapterList.findIndex(
+        (chapter) =>
+          String(
+            chapter
+              ?.attributes
+              ?.chapter
+          ) ===
+          String(
+            currentNumber
+          )
+      );
+  }
 
   const previous =
     index > 0
-      ? chapters[
+      ? chapterList[
           index - 1
         ]
       : null;
@@ -403,60 +488,140 @@ function setupNavigation(
   const next =
     index >= 0 &&
     index <
-      chapters.length - 1
-      ? chapters[
+      chapterList.length -
+        1
+      ? chapterList[
           index + 1
         ]
       : null;
 
-  if (previous) {
-    prevBtn.href =
-      `reader.html?chapterId=${encodeURIComponent(
-        previous.id
-      )}${
-        mediaId
-          ? `&mediaId=${encodeURIComponent(
-              mediaId
-            )}`
-          : ""
-      }`;
+  setNavigationLink(
+    prevChapter,
+    previous
+  );
 
-    prevBtn.classList.remove(
-      "disabled"
-    );
-  }
+  setNavigationLink(
+    bottomPrev,
+    previous
+  );
 
-  if (next) {
-    nextBtn.href =
-      `reader.html?chapterId=${encodeURIComponent(
-        next.id
-      )}${
-        mediaId
-          ? `&mediaId=${encodeURIComponent(
-              mediaId
-            )}`
-          : ""
-      }`;
+  setNavigationLink(
+    nextChapter,
+    next
+  );
 
-    nextBtn.classList.remove(
-      "disabled"
-    );
+  setNavigationLink(
+    bottomNext,
+    next
+  );
+}
+
+function readContinueData() {
+  try {
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          CONTINUE_KEY
+        ) ||
+        "[]"
+      );
+
+    return Array.isArray(value)
+      ? value
+      : [];
+  } catch {
+    return [];
   }
 }
 
-function renderPages(data) {
+function saveProgress(
+  progress = 0
+) {
+  if (
+    !currentManga ||
+    !currentChapter ||
+    !currentMangaId
+  ) {
+    return;
+  }
+
+  const items =
+    readContinueData();
+
+  const existing =
+    items.findIndex(
+      (item) =>
+        item.mangaId ===
+        currentMangaId
+    );
+
+  const record = {
+    mangaId:
+      currentMangaId,
+    mangaTitle:
+      getTitle(
+        currentManga
+      ),
+    coverFile:
+      getCoverFile(
+        currentManga
+      ),
+    chapterId:
+      currentChapterId,
+    chapterLabel:
+      getChapterLabel(
+        currentChapter
+      ),
+    progress:
+      Math.round(
+        progress
+      ),
+    updatedAt:
+      Date.now()
+  };
+
+  if (existing >= 0) {
+    items.splice(
+      existing,
+      1
+    );
+  }
+
+  items.unshift(
+    record
+  );
+
+  localStorage.setItem(
+    CONTINUE_KEY,
+    JSON.stringify(
+      items.slice(
+        0,
+        30
+      )
+    )
+  );
+}
+
+function proxyImage(url) {
+  return `/api/proxy-image?url=${encodeURIComponent(
+    url
+  )}`;
+}
+
+function renderPages(
+  atHome
+) {
   const baseUrl =
-    data?.baseUrl;
+    atHome?.baseUrl;
 
   const hash =
-    data?.chapter?.hash;
+    atHome?.chapter
+      ?.hash;
 
   const files =
-    Array.isArray(
-      data?.chapter?.data
-    )
-      ? data.chapter.data
-      : [];
+    atHome?.chapter
+      ?.data ||
+    [];
 
   if (
     !baseUrl ||
@@ -464,233 +629,262 @@ function renderPages(data) {
     !files.length
   ) {
     throw new Error(
-      "No page images returned"
+      "No readable pages returned."
     );
   }
 
-  pagesEl.innerHTML = "";
+  readerStatus.style.display =
+    "none";
 
-  const fragment =
-    document.createDocumentFragment();
+  readerPages.innerHTML =
+    "";
 
   files.forEach(
-    (file, index) => {
-      const original =
-        `${baseUrl}/data/${hash}/${file}`;
-
-      const image =
+    (
+      file,
+      index
+    ) => {
+      const wrapper =
         document.createElement(
-          "img"
+          "div"
         );
 
-      image.className =
+      wrapper.className =
         "reader-page";
 
-      image.src =
-        `/api/proxy-image?url=${encodeURIComponent(
-          original
-        )}`;
+      const directUrl =
+        `${baseUrl}/data/${hash}/${file}`;
 
-      image.alt =
-        `Page ${index + 1}`;
+      wrapper.innerHTML = `
+        <img
+          src="${escapeHtml(
+            proxyImage(
+              directUrl
+            )
+          )}"
+          alt="Page ${index + 1}"
+          ${
+            index < 2
+              ? 'loading="eager"'
+              : 'loading="lazy"'
+          }
+          decoding="async"
+        >
+      `;
 
-      image.decoding =
-        "async";
-
-      image.loading =
-        index < 2
-          ? "eager"
-          : "lazy";
-
-      if (index < 2) {
-        image.fetchPriority =
-          "high";
-      }
-
-      fragment.appendChild(
-        image
+      readerPages.appendChild(
+        wrapper
       );
     }
   );
+}
 
-  pagesEl.appendChild(
-    fragment
-  );
+function updateScrollProgress() {
+  const total =
+    document.documentElement
+      .scrollHeight -
+    window.innerHeight;
 
-  readerStatus.classList.add(
-    "hidden"
-  );
+  const value =
+    total > 0
+      ? (
+          window.scrollY /
+          total
+        ) *
+        100
+      : 0;
 
-  readerEnd.classList.remove(
-    "hidden"
+  const clamped =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        value
+      )
+    );
+
+  readerProgress.style.width =
+    `${clamped}%`;
+
+  saveProgress(
+    clamped
   );
 }
 
-function setupProgress() {
-  const update = () => {
-    const documentHeight =
-      document.documentElement
-        .scrollHeight -
-      window.innerHeight;
+function throttle(
+  callback,
+  delay
+) {
+  let timeout = null;
 
-    const amount =
-      documentHeight > 0
-        ? window.scrollY /
-          documentHeight
-        : 0;
-
-    progressBar.style.width =
-      `${Math.min(
-        100,
-        Math.max(
-          0,
-          amount * 100
-        )
-      )}%`;
-  };
-
-  window.addEventListener(
-    "scroll",
-    update,
-    {
-      passive: true
+  return (...args) => {
+    if (timeout) {
+      return;
     }
-  );
 
-  update();
+    timeout =
+      setTimeout(
+        () => {
+          timeout = null;
+
+          callback(
+            ...args
+          );
+        },
+        delay
+      );
+  };
 }
 
 async function init() {
+  const {
+    chapterId,
+    mangaId
+  } =
+    parameters();
+
   if (!chapterId) {
     readerStatus.textContent =
-      "INVALID CHAPTER";
+      "Invalid chapter.";
 
     return;
   }
 
-  if (mediaId) {
-    const detailUrl =
-      `detail.html?id=${encodeURIComponent(
-        mediaId
-      )}`;
-
-    backSeries.href =
-      detailUrl;
-
-    seriesBtn.href =
-      detailUrl;
-  }
+  currentChapterId =
+    chapterId;
 
   try {
-    const [
-      chapter,
-      manga
-    ] =
-      await Promise.all([
-        fetchChapter(),
-        fetchAniListMedia()
-      ]);
-
-    const external =
-      safeUrl(
-        chapter?.attributes
-          ?.externalUrl
+    currentChapter =
+      await fetchChapter(
+        chapterId
       );
 
-    if (external) {
-      window.location.href =
-        external;
-
-      return;
-    }
-
-    if (manga) {
-      mangaTitle =
-        getAniListTitle(
-          manga
-        );
-
-      coverUrl =
-        manga?.coverImage
-          ?.extraLarge ||
-        manga?.coverImage
-          ?.large ||
-        manga?.coverImage
-          ?.medium ||
-        "";
-    }
-
-    const number =
-      chapter?.attributes
-        ?.chapter;
-
-    const title =
-      chapter?.attributes
-        ?.title;
-
-    chapterLabel =
-      number
-        ? `Chapter ${number}`
-        : "Special";
-
-    if (title) {
-      chapterLabel +=
-        ` — ${title}`;
-    }
-
-    readerTitle.textContent =
-      mangaTitle;
-
-    chapterMeta.textContent =
-      chapterLabel.toUpperCase();
-
-    endTitle.textContent =
-      `Finished ${chapterLabel}`;
-
-    document.title =
-      `${chapterLabel} — ${mangaTitle} — Panelly`;
-
-    const mangaRelation =
-      chapter?.relationships
+    currentMangaId =
+      mangaId ||
+      currentChapter
+        ?.relationships
         ?.find(
           (relationship) =>
             relationship.type ===
             "manga"
-        );
+        )
+        ?.id;
 
-    if (mangaRelation?.id) {
-      try {
-        const siblings =
-          await fetchSiblingChapters(
-            mangaRelation.id
-          );
-
-        setupNavigation(
-          siblings
-        );
-      } catch (
-        navigationError
-      ) {
-        console.error(
-          navigationError
-        );
-      }
+    if (!currentMangaId) {
+      throw new Error(
+        "Couldn't identify manga."
+      );
     }
 
-    const pages =
-      await fetchPages();
+    const [
+      manga,
+      atHome,
+      chapters
+    ] =
+      await Promise.all([
+        fetchManga(
+          currentMangaId
+        ),
+        fetchAtHome(
+          chapterId
+        ),
+        fetchChapterList(
+          currentMangaId
+        )
+      ]);
 
-    renderPages(pages);
+    currentManga =
+      manga;
 
-    saveContinue();
+    chapterList =
+      chapters;
+
+    const title =
+      getTitle(manga);
+
+    const label =
+      getChapterLabel(
+        currentChapter
+      );
+
+    document.title =
+      `${label} · ${title} — Panelly`;
+
+    readerTitle.textContent =
+      title;
+
+    readerChapter.textContent =
+      label;
+
+    backToSeries.href =
+      `detail.html?id=${encodeURIComponent(
+        currentMangaId
+      )}`;
+
+    renderPages(
+      atHome
+    );
+
+    configureNavigation();
+
+    saveProgress(0);
   } catch (error) {
     console.error(error);
 
-    readerStatus.textContent =
-      "COULDN'T LOAD THIS CHAPTER";
+    readerStatus.innerHTML = `
+      <div>
+        <strong>
+          This chapter couldn't be opened.
+        </strong>
+
+        <p>
+          It may no longer be available from the supported source.
+        </p>
+      </div>
+    `;
   }
 }
 
-setupProgress();
+window.addEventListener(
+  "scroll",
+  throttle(
+    updateScrollProgress,
+    300
+  ),
+  {
+    passive: true
+  }
+);
+
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (
+      event.key ===
+        "ArrowLeft" &&
+      !prevChapter
+        .classList
+        .contains(
+          "disabled"
+        )
+    ) {
+      window.location.href =
+        prevChapter.href;
+    }
+
+    if (
+      event.key ===
+        "ArrowRight" &&
+      !nextChapter
+        .classList
+        .contains(
+          "disabled"
+        )
+    ) {
+      window.location.href =
+        nextChapter.href;
+    }
+  }
+);
 
 init();
