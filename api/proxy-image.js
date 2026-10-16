@@ -1,13 +1,20 @@
 function allowedHost(
   hostname
 ) {
+  const host =
+    String(
+      hostname ||
+      ""
+    ).toLowerCase();
+
   return (
-    hostname ===
+    host ===
       "uploads.mangadex.org" ||
-    hostname ===
-      "mangadex.network" ||
-    hostname.endsWith(
+    host.endsWith(
       ".mangadex.network"
+    ) ||
+    host.endsWith(
+      ".mangadex.org"
     )
   );
 }
@@ -16,38 +23,45 @@ export default async function handler(
   req,
   res
 ) {
-  const rawUrl =
-    Array.isArray(
-      req.query.url
-    )
-      ? req.query.url[0]
-      : req.query.url;
-
   if (
-    !rawUrl ||
-    typeof rawUrl !==
-      "string"
+    req.method !==
+    "GET"
   ) {
+    res.setHeader(
+      "Allow",
+      "GET"
+    );
+
     return res
-      .status(400)
-      .json({
-        error:
-          "Missing image URL."
-      });
+      .status(
+        405
+      )
+      .send(
+        "Method not allowed"
+      );
   }
+
+  const raw =
+    String(
+      req.query.url ||
+      ""
+    );
 
   let target;
 
   try {
     target =
-      new URL(rawUrl);
+      new URL(
+        raw
+      );
   } catch {
     return res
-      .status(400)
-      .json({
-        error:
-          "Invalid image URL."
-      });
+      .status(
+        400
+      )
+      .send(
+        "Invalid image URL"
+      );
   }
 
   if (
@@ -58,17 +72,27 @@ export default async function handler(
     )
   ) {
     return res
-      .status(403)
-      .json({
-        error:
-          "Image host is not allowed."
-      });
+      .status(
+        403
+      )
+      .send(
+        "Image host not allowed"
+      );
   }
 
   try {
     const response =
       await fetch(
-        target.toString()
+        target.toString(),
+        {
+          headers: {
+            Accept:
+              "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+
+            "User-Agent":
+              "Panelly/1.0"
+          }
+        }
       );
 
     if (
@@ -79,58 +103,46 @@ export default async function handler(
           response.status
         )
         .send(
-          "Image unavailable."
+          "Image request failed"
         );
     }
 
-    const contentType =
-      response.headers.get(
-        "content-type"
-      ) ||
-      "image/jpeg";
-
-    if (
-      !contentType
-        .toLowerCase()
-        .startsWith(
-          "image/"
-        )
-    ) {
-      return res
-        .status(415)
-        .send(
-          "Unsupported content."
-        );
-    }
-
-    const arrayBuffer =
-      await response
-        .arrayBuffer();
+    const buffer =
+      Buffer.from(
+        await response.arrayBuffer()
+      );
 
     res.setHeader(
       "Content-Type",
-      contentType
+      response.headers.get(
+        "content-type"
+      ) ||
+      "image/jpeg"
     );
 
     res.setHeader(
       "Cache-Control",
-      "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+      "public, max-age=86400, s-maxage=86400"
     );
 
     return res
-      .status(200)
+      .status(
+        200
+      )
       .send(
-        Buffer.from(
-          arrayBuffer
-        )
+        buffer
       );
   } catch (error) {
-    console.error(error);
+    console.error(
+      error
+    );
 
     return res
-      .status(500)
+      .status(
+        500
+      )
       .send(
-        "Image request failed."
+        "Image proxy failed"
       );
   }
 }
