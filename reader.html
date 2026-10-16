@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -9,99 +11,600 @@
   >
 
   <meta
-    name="theme-color"
-    content="#0b0b0b"
+    name="color-scheme"
+    content="dark"
   >
 
-  <title>Reader — Panelly</title>
+  <title>
+    Panelly Reader
+  </title>
 
-  <link
-    rel="icon"
-    type="image/png"
-    href="favicon.png"
-  >
+  <style>
 
-  <link
-    rel="apple-touch-icon"
-    href="apple-touch-icon.png"
-  >
+    :root {
+      --bg: #090909;
+      --bar: #080808;
+      --panel: #111111;
+      --line: #2b2b2b;
+      --text: #f2f2f2;
+      --muted: #8a8a8a;
+    }
 
-  <link
-    rel="preconnect"
-    href="https://fonts.googleapis.com"
-  >
+    * {
+      box-sizing: border-box;
+    }
 
-  <link
-    rel="preconnect"
-    href="https://fonts.gstatic.com"
-    crossorigin
-  >
+    html {
+      background: var(--bg);
+      scroll-behavior: smooth;
+    }
 
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  >
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+    }
 
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .reader-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+
+      min-height: 78px;
+
+      display: grid;
+
+      grid-template-columns:
+        1fr
+        minmax(
+          320px,
+          700px
+        )
+        1fr;
+
+      align-items: center;
+
+      gap: 24px;
+
+      padding:
+        10px
+        18px;
+
+      border-bottom:
+        1px solid
+        var(--line);
+
+      background:
+        rgba(
+          8,
+          8,
+          8,
+          0.98
+        );
+
+      backdrop-filter:
+        blur(
+          10px
+        );
+    }
+
+    .reader-back {
+      justify-self: start;
+
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+      font-size:
+        12px;
+
+      letter-spacing:
+        0.04em;
+
+      color:
+        #ffffff;
+    }
+
+    .reader-title-block {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .reader-title {
+      margin: 0;
+
+      overflow:
+        hidden;
+
+      text-overflow:
+        ellipsis;
+
+      white-space:
+        nowrap;
+
+      font-size:
+        17px;
+
+      line-height:
+        1.15;
+
+      font-weight:
+        800;
+    }
+
+    .reader-chapter {
+      display:
+        block;
+
+      margin-top:
+        6px;
+
+      overflow:
+        hidden;
+
+      text-overflow:
+        ellipsis;
+
+      white-space:
+        nowrap;
+
+      color:
+        var(--muted);
+
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+      font-size:
+        10px;
+
+      letter-spacing:
+        0.12em;
+
+      text-transform:
+        uppercase;
+    }
+
+    .reader-nav {
+      justify-self:
+        end;
+
+      display:
+        flex;
+
+      gap:
+        8px;
+    }
+
+    .reader-nav a {
+      min-width:
+        74px;
+
+      height:
+        38px;
+
+      display:
+        inline-flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      padding:
+        0 14px;
+
+      border:
+        1px solid
+        #3a3a3a;
+
+      background:
+        transparent;
+
+      color:
+        #f5f5f5;
+
+      font:
+        700
+        11px/1
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+    }
+
+    .reader-nav .disabled {
+      opacity:
+        0.28;
+
+      pointer-events:
+        none;
+    }
+
+    .reader-main {
+      width:
+        100%;
+
+      padding:
+        52px
+        0
+        90px;
+    }
+
+    .reader-status {
+      width:
+        min(
+          1200px,
+          calc(
+            100% - 32px
+          )
+        );
+
+      margin:
+        0 auto 24px;
+
+      padding:
+        20px;
+
+      border:
+        1px solid
+        var(--line);
+
+      background:
+        var(--panel);
+
+      color:
+        var(--muted);
+
+      font:
+        12px/1.7
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+      text-align:
+        center;
+    }
+
+    .reader-status.error {
+      color:
+        #e8a7a7;
+    }
+
+    .reader-pages {
+      width:
+        min(
+          1200px,
+          100%
+        );
+
+      margin:
+        0 auto;
+    }
+
+    .reader-page {
+      display:
+        block;
+
+      width:
+        100%;
+
+      height:
+        auto;
+
+      margin:
+        0 auto;
+
+      background:
+        #111;
+    }
+
+    .reader-page +
+    .reader-page {
+      margin-top:
+        0;
+    }
+
+    .reader-footer {
+      width:
+        min(
+          1200px,
+          calc(
+            100% - 32px
+          )
+        );
+
+      margin:
+        38px
+        auto
+        0;
+
+      padding-top:
+        28px;
+
+      border-top:
+        1px solid
+        var(--line);
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        space-between;
+
+      gap:
+        16px;
+    }
+
+    .reader-footer a {
+      min-height:
+        44px;
+
+      display:
+        inline-flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      padding:
+        0 18px;
+
+      border:
+        1px solid
+        #333;
+
+      font:
+        700
+        11px/1
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+    }
+
+    .reader-footer a.disabled {
+      opacity:
+        0.28;
+
+      pointer-events:
+        none;
+    }
+
+    .reader-progress {
+      position:
+        fixed;
+
+      left:
+        0;
+
+      bottom:
+        0;
+
+      z-index:
+        60;
+
+      width:
+        100%;
+
+      height:
+        3px;
+
+      background:
+        rgba(
+          255,
+          255,
+          255,
+          0.08
+        );
+    }
+
+    .reader-progress span {
+      display:
+        block;
+
+      width:
+        0;
+
+      height:
+        100%;
+
+      background:
+        #f5f5f5;
+
+      transition:
+        width
+        0.15s
+        linear;
+    }
+
+    @media (
+      max-width:
+        760px
+    ) {
+
+      .reader-bar {
+        grid-template-columns:
+          auto
+          1fr
+          auto;
+
+        min-height:
+          66px;
+
+        gap:
+          10px;
+
+        padding:
+          8px
+          10px;
+      }
+
+      .reader-back {
+        font-size:
+          0;
+      }
+
+      .reader-back::after {
+        content:
+          "←";
+
+        font-size:
+          18px;
+      }
+
+      .reader-title {
+        font-size:
+          13px;
+      }
+
+      .reader-chapter {
+        font-size:
+          8px;
+
+        margin-top:
+          4px;
+      }
+
+      .reader-nav {
+        gap:
+          4px;
+      }
+
+      .reader-nav a {
+        min-width:
+          42px;
+
+        width:
+          42px;
+
+        height:
+          34px;
+
+        padding:
+          0;
+
+        font-size:
+          0;
+      }
+
+      #prevBtn::after {
+        content:
+          "←";
+
+        font-size:
+          14px;
+      }
+
+      #nextBtn::after {
+        content:
+          "→";
+
+        font-size:
+          14px;
+      }
+
+      .reader-main {
+        padding-top:
+          18px;
+      }
+
+      .reader-pages {
+        width:
+          100%;
+      }
+
+    }
+
+  </style>
+
 </head>
 
-<body class="reader-body">
+<body>
 
-  <header class="reader-header">
+  <header class="reader-bar">
 
     <a
       class="reader-back"
-      id="backToSeries"
+      id="seriesBack"
       href="index.html"
     >
       ← Series
     </a>
 
-    <div class="reader-title-wrap">
+    <div class="reader-title-block">
 
-      <strong id="readerTitle">
-        Panelly Reader
-      </strong>
+      <h1
+        class="reader-title"
+        id="readerTitle"
+      >
+        Loading series...
+      </h1>
 
-      <span id="readerChapter">
+      <span
+        class="reader-chapter"
+        id="readerChapter"
+      >
         Loading chapter...
       </span>
 
     </div>
 
-    <div class="reader-navigation">
+    <nav
+      class="reader-nav"
+      aria-label="Chapter navigation"
+    >
 
       <a
-        id="prevChapter"
+        id="prevBtn"
         class="disabled"
-        href="#"
       >
         ← Prev
       </a>
 
       <a
-        id="nextChapter"
+        id="nextBtn"
         class="disabled"
-        href="#"
       >
         Next →
       </a>
 
-    </div>
+    </nav>
 
   </header>
 
-  <div class="reader-progress-track">
-    <div
-      class="reader-progress"
-      id="readerProgress"
-    ></div>
-  </div>
-
-  <main>
+  <main class="reader-main">
 
     <div
       class="reader-status"
@@ -115,22 +618,18 @@
       id="readerPages"
     ></div>
 
-    <div class="reader-bottom">
+    <div class="reader-footer">
 
       <a
         id="bottomPrev"
-        href="#"
+        class="disabled"
       >
         ← Previous Chapter
       </a>
 
-      <span>
-        END OF CHAPTER
-      </span>
-
       <a
         id="bottomNext"
-        href="#"
+        class="disabled"
       >
         Next Chapter →
       </a>
@@ -139,7 +638,17 @@
 
   </main>
 
+  <div
+    class="reader-progress"
+    aria-hidden="true"
+  >
+    <span
+      id="progressBar"
+    ></span>
+  </div>
+
   <script src="reader.js"></script>
 
 </body>
+
 </html>
