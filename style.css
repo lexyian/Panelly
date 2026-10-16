@@ -2131,3 +2131,42 @@ input:focus-visible {
   }
 
 }
+
+.detail-hero {
+  align-items: stretch;
+}
+
+.detail-cover {
+  height: 620px;
+  min-height: 620px;
+  align-self: start;
+}
+
+.detail-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.source-panel {
+  width: 100%;
+  margin-top: 0;
+  padding: 48px 0 60px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+@media (max-width: 800px) {
+  .detail-cover {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 0.74;
+  }
+
+  .detail-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
