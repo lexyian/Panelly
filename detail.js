@@ -32,13 +32,17 @@ const searchInput =
   );
 
 let currentManga = null;
+
 let currentChapters = [];
+
 let externalChapters = [];
 
 let renderedChapterCount = 0;
+
 let chapterObserver = null;
 
-const CHAPTER_BATCH_SIZE = 100;
+const CHAPTER_BATCH_SIZE =
+  100;
 
 function escapeHtml(value) {
   return String(
@@ -167,7 +171,9 @@ function buildQuery(params) {
     }
   }
 
-  return parts.join("&");
+  return parts.join(
+    "&"
+  );
 }
 
 function getTitle(manga) {
@@ -184,7 +190,9 @@ function getTitle(manga) {
   );
 }
 
-function getDescription(manga) {
+function getDescription(
+  manga
+) {
   const descriptions =
     manga?.attributes
       ?.description ||
@@ -202,7 +210,9 @@ function getDescription(manga) {
   );
 }
 
-function getCoverFile(manga) {
+function getCoverFile(
+  manga
+) {
   const cover =
     manga?.relationships
       ?.find(
@@ -238,9 +248,14 @@ function coverUrl(
   )}`;
 }
 
-function getCreators(manga) {
+function getCreators(
+  manga
+) {
   const names =
-    (manga?.relationships || [])
+    (
+      manga?.relationships ||
+      []
+    )
       .filter(
         relationship =>
           relationship.type ===
@@ -254,7 +269,9 @@ function getCreators(manga) {
             ?.attributes
             ?.name
       )
-      .filter(Boolean);
+      .filter(
+        Boolean
+      );
 
   return (
     [
@@ -282,7 +299,9 @@ function getTags(manga) {
           {}
         )[0]
     )
-    .filter(Boolean);
+    .filter(
+      Boolean
+    );
 }
 
 function formatStatus(value) {
@@ -295,6 +314,25 @@ function formatStatus(value) {
       " "
     )
     .toLowerCase();
+}
+
+function formatLanguage(
+  language
+) {
+  const languages = {
+    ja: "Japanese",
+    ko: "Korean",
+    zh: "Chinese",
+    "zh-hk": "Chinese"
+  };
+
+  return (
+    languages[
+      language
+    ] ||
+    language ||
+    "Unknown"
+  );
 }
 
 async function fetchManga(
@@ -331,6 +369,7 @@ async function fetchAllChapters(
   const limit = 100;
 
   let offset = 0;
+
   let total = Infinity;
 
   while (
@@ -387,7 +426,9 @@ async function fetchAllChapters(
         chapters.length
       );
 
-    if (!batch.length) {
+    if (
+      !batch.length
+    ) {
       break;
     }
 
@@ -398,7 +439,9 @@ async function fetchAllChapters(
   return chapters;
 }
 
-function safeExternalUrl(value) {
+function safeExternalUrl(
+  value
+) {
   if (!value) {
     return null;
   }
@@ -410,8 +453,10 @@ function safeExternalUrl(value) {
       );
 
     if (
-      url.protocol === "https:" ||
-      url.protocol === "http:"
+      url.protocol ===
+        "https:" ||
+      url.protocol ===
+        "http:"
     ) {
       return url.toString();
     }
@@ -420,7 +465,9 @@ function safeExternalUrl(value) {
   return null;
 }
 
-function chapterNumber(chapter) {
+function chapterNumber(
+  chapter
+) {
   const raw =
     chapter?.attributes
       ?.chapter;
@@ -453,7 +500,8 @@ function isInternalChapter(
       chapter?.id
     ) &&
     !safeExternalUrl(
-      chapter?.attributes
+      chapter
+        ?.attributes
         ?.externalUrl
     )
   );
@@ -524,6 +572,7 @@ function prepareChapters(
     new Map();
 
   const specials = [];
+
   const external = [];
 
   chapters.forEach(
@@ -534,7 +583,9 @@ function prepareChapters(
             ?.externalUrl
         );
 
-      if (externalUrl) {
+      if (
+        externalUrl
+      ) {
         external.push(
           chapter
         );
@@ -615,7 +666,9 @@ function prepareChapters(
   specials.forEach(
     chapter => {
       internal.push({
-        number: null,
+        number:
+          null,
+
         chapter
       });
     }
@@ -647,7 +700,9 @@ function getChapterLabel(
       ? `Chapter ${number}`
       : "Special";
 
-  if (title) {
+  if (
+    title
+  ) {
     label +=
       ` — ${title}`;
   }
@@ -655,7 +710,9 @@ function getChapterLabel(
   return label;
 }
 
-function getGroupName(chapter) {
+function getGroupName(
+  chapter
+) {
   const group =
     chapter?.relationships
       ?.find(
@@ -671,7 +728,9 @@ function getGroupName(chapter) {
   );
 }
 
-function getExternalName(url) {
+function getExternalName(
+  url
+) {
   try {
     const hostname =
       new URL(
@@ -781,7 +840,9 @@ function readBookmarks() {
   }
 }
 
-function saveBookmarks(items) {
+function saveBookmarks(
+  items
+) {
   localStorage.setItem(
     BOOKMARK_KEY,
     JSON.stringify(
@@ -791,7 +852,9 @@ function saveBookmarks(items) {
 }
 
 function isBookmarked() {
-  if (!currentManga) {
+  if (
+    !currentManga
+  ) {
     return false;
   }
 
@@ -810,7 +873,9 @@ function isBookmarked() {
 }
 
 function toggleBookmark() {
-  if (!currentManga) {
+  if (
+    !currentManga
+  ) {
     return;
   }
 
@@ -875,7 +940,9 @@ function updateBookmarkButton() {
       "bookmarkBtn"
     );
 
-  if (!button) {
+  if (
+    !button
+  ) {
     return;
   }
 
@@ -884,8 +951,8 @@ function updateBookmarkButton() {
 
   button.textContent =
     saved
-      ? "✓ Saved to Panel Shelf"
-      : "+ Add to Panel Shelf";
+      ? "✓ Saved to My Shelf"
+      : "+ Add to My Shelf";
 
   button.classList.toggle(
     "saved",
@@ -893,7 +960,9 @@ function updateBookmarkButton() {
   );
 }
 
-function renderDetail(manga) {
+function renderDetail(
+  manga
+) {
   currentManga =
     manga;
 
@@ -937,121 +1006,202 @@ function renderDetail(manga) {
 
   const year =
     manga?.attributes
-      ?.year;
+      ?.year ||
+    "—";
+
+  const language =
+    formatLanguage(
+      manga?.attributes
+        ?.originalLanguage
+    );
+
+  const lastVolume =
+    manga?.attributes
+      ?.lastVolume ||
+    "—";
+
+  const lastChapter =
+    manga?.attributes
+      ?.lastChapter ||
+    "—";
 
   detailEl.innerHTML = `
-    <div class="series-cover-panel">
+    <div class="detail-hero">
 
-      ${
-        cover
-          ? `
-            <img
-              class="detail-cover series-cover"
-              src="${escapeHtml(
-                cover
-              )}"
-              alt="${escapeHtml(
-                title
-              )} cover"
-              decoding="async"
-              fetchpriority="high"
-            >
-          `
-          : `
-            <div class="series-cover-placeholder">
-              NO COVER
-            </div>
-          `
-      }
+      <div class="detail-cover">
 
-      <span class="series-file-label">
-        SERIES FILE
-      </span>
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  title
+                )} cover"
+                decoding="async"
+                fetchpriority="high"
+              >
+            `
+            : `
+              <div class="image-fallback"></div>
+            `
+        }
 
-    </div>
+        <span class="detail-cover-label">
+          SERIES FILE
+        </span>
 
-    <div class="detail-info series-info">
+      </div>
 
-      <div class="series-topline">
+      <div class="detail-copy">
 
-        <span class="status-pill series-status">
+        <span class="detail-kicker">
           ${escapeHtml(
             status
+          )} · ${escapeHtml(
+            language
           )}
         </span>
 
-        ${
-          year
-            ? `
-              <span class="series-year">
-                ${escapeHtml(
-                  year
-                )}
-              </span>
-            `
-            : ""
-        }
+        <h1 class="detail-title">
+          ${escapeHtml(
+            title
+          )}
+        </h1>
+
+        <p class="detail-creators">
+          ${escapeHtml(
+            creators
+          )}
+        </p>
+
+        <div class="detail-tags">
+
+          ${tags
+            .slice(
+              0,
+              12
+            )
+            .map(
+              tag => `
+                <span class="detail-tag">
+                  ${escapeHtml(
+                    tag
+                  )}
+                </span>
+              `
+            )
+            .join("")}
+
+        </div>
+
+        <p class="detail-description">
+          ${escapeHtml(
+            description
+          )}
+        </p>
+
+        <div class="detail-actions">
+
+          <a
+            class="primary-button"
+            id="readNowBtn"
+          >
+            Checking Chapters...
+          </a>
+
+          <button
+            class="secondary-button"
+            id="bookmarkBtn"
+            type="button"
+          >
+            + Add to My Shelf
+          </button>
+
+        </div>
+
+        <div class="detail-stats">
+
+          <div class="detail-stat">
+
+            <span>
+              STATUS
+            </span>
+
+            <strong>
+              ${escapeHtml(
+                status
+              )}
+            </strong>
+
+          </div>
+
+          <div class="detail-stat">
+
+            <span>
+              YEAR
+            </span>
+
+            <strong>
+              ${escapeHtml(
+                year
+              )}
+            </strong>
+
+          </div>
+
+          <div class="detail-stat">
+
+            <span>
+              ORIGIN
+            </span>
+
+            <strong>
+              ${escapeHtml(
+                language
+              )}
+            </strong>
+
+          </div>
+
+          <div class="detail-stat">
+
+            <span>
+              VOLUMES
+            </span>
+
+            <strong>
+              ${escapeHtml(
+                lastVolume
+              )}
+            </strong>
+
+          </div>
+
+          <div class="detail-stat">
+
+            <span>
+              CHAPTERS
+            </span>
+
+            <strong>
+              ${escapeHtml(
+                lastChapter
+              )}
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div
+          id="sourcePanel"
+          class="source-panel"
+        ></div>
 
       </div>
-
-      <h1 class="detail-title series-title">
-        ${escapeHtml(
-          title
-        )}
-      </h1>
-
-      <p class="detail-meta series-creator">
-        ${escapeHtml(
-          creators
-        )}
-      </p>
-
-      <div class="tag-list series-tags">
-
-        ${tags
-          .slice(
-            0,
-            12
-          )
-          .map(
-            tag =>
-              `<span class="tag">${escapeHtml(
-                tag
-              )}</span>`
-          )
-          .join("")}
-
-      </div>
-
-      <p class="detail-desc series-description">
-        ${escapeHtml(
-          description
-        )}
-      </p>
-
-      <div class="series-actions">
-
-        <a
-          class="series-read-btn disabled"
-          id="readNowBtn"
-        >
-          Checking chapters...
-        </a>
-
-        <button
-          class="series-shelf-btn"
-          id="bookmarkBtn"
-          type="button"
-        >
-          + Add to Panel Shelf
-        </button>
-
-      </div>
-
-      <div
-        id="sourcePanel"
-        class="source-panel"
-      ></div>
 
     </div>
   `;
@@ -1071,7 +1221,9 @@ function renderDetail(manga) {
     `${title} — Panelly`;
 }
 
-function readerUrl(chapterId) {
+function readerUrl(
+  chapterId
+) {
   const params =
     new URLSearchParams({
       source:
@@ -1093,7 +1245,9 @@ function readerUrl(chapterId) {
 
 function getSourceList() {
   const results = [];
-  const seen = new Set();
+
+  const seen =
+    new Set();
 
   externalChapters.forEach(
     chapter => {
@@ -1103,7 +1257,9 @@ function getSourceList() {
             ?.externalUrl
         );
 
-      if (!url) {
+      if (
+        !url
+      ) {
         return;
       }
 
@@ -1129,7 +1285,9 @@ function getSourceList() {
 
       results.push({
         name,
+
         url,
+
         note:
           "External chapter source"
       });
@@ -1137,7 +1295,8 @@ function getSourceList() {
   );
 
   results.push({
-    name: "Komix",
+    name:
+      "Komix",
 
     url:
       "https://www.komix.to/browse",
@@ -1157,7 +1316,9 @@ function renderSources() {
       "sourcePanel"
     );
 
-  if (!panel) {
+  if (
+    !panel
+  ) {
     return;
   }
 
@@ -1174,11 +1335,13 @@ function renderSources() {
         </span>
 
         <strong>
+
           ${
             currentChapters.length
               ? `${currentChapters.length} chapter${currentChapters.length === 1 ? "" : "s"} available in Panelly`
-              : "No in-app chapters found"
+              : "More places to check for this title"
           }
+
         </strong>
 
       </div>
@@ -1197,15 +1360,15 @@ function renderSources() {
             <div class="source-card source-card-panelly">
 
               <span class="source-type">
-                IN-APP
+                PANELLY READER
               </span>
 
               <strong>
-                Panelly Reader
+                Read inside Panelly
               </strong>
 
               <small>
-                Opens chapters without leaving Panelly
+                Opens without leaving the site
               </small>
 
               <a href="#chapterList">
@@ -1230,7 +1393,7 @@ function renderSources() {
             >
 
               <span class="source-type">
-                EXTERNAL
+                EXTERNAL SOURCE
               </span>
 
               <strong>
@@ -1264,7 +1427,9 @@ function updateReadButton() {
       "readNowBtn"
     );
 
-  if (!button) {
+  if (
+    !button
+  ) {
     return;
   }
 
@@ -1283,9 +1448,11 @@ function updateReadButton() {
     button.textContent =
       "Start Reading →";
 
-    button.classList.remove(
-      "disabled"
-    );
+    button.style.opacity =
+      "1";
+
+    button.style.pointerEvents =
+      "auto";
 
     return;
   }
@@ -1295,20 +1462,26 @@ function updateReadButton() {
   );
 
   button.textContent =
-    "No In-App Chapters Yet";
+    "No Readable Chapters";
 
-  button.classList.add(
-    "disabled"
-  );
+  button.style.opacity =
+    "0.45";
+
+  button.style.pointerEvents =
+    "none";
 }
 
 function updateChapterCount() {
-  if (!chapterCountEl) {
+  if (
+    !chapterCountEl
+  ) {
     return;
   }
 
   chapterCountEl.textContent =
-    `${currentChapters.length} readable`;
+    currentChapters.length
+      ? `${currentChapters.length} readable chapter${currentChapters.length === 1 ? "" : "s"}`
+      : "No in-app chapters";
 }
 
 function createChapterRow(
@@ -1324,7 +1497,7 @@ function createChapterRow(
     );
 
   element.className =
-    "chapter-row chapter-card-new";
+    "chapter-row";
 
   element.href =
     readerUrl(
@@ -1345,7 +1518,7 @@ function createChapterRow(
 
     <span class="chapter-main">
 
-      <strong class="chapter-label">
+      <strong>
 
         ${escapeHtml(
           getChapterLabel(
@@ -1356,7 +1529,7 @@ function createChapterRow(
 
       </strong>
 
-      <small class="chapter-group">
+      <small>
 
         ${escapeHtml(
           getGroupName(
@@ -1370,7 +1543,7 @@ function createChapterRow(
 
     <span class="chapter-read">
 
-      READ IN PANELLY →
+      READ →
 
     </span>
   `;
@@ -1383,6 +1556,7 @@ function appendChapterBatch() {
     Math.min(
       renderedChapterCount +
         CHAPTER_BATCH_SIZE,
+
       currentChapters.length
     );
 
@@ -1392,7 +1566,9 @@ function appendChapterBatch() {
   for (
     let index =
       renderedChapterCount;
+
     index < end;
+
     index += 1
   ) {
     fragment.appendChild(
@@ -1405,9 +1581,10 @@ function appendChapterBatch() {
     );
   }
 
-  chapterListEl.appendChild(
-    fragment
-  );
+  chapterListEl
+    .appendChild(
+      fragment
+    );
 
   renderedChapterCount =
     end;
@@ -1425,9 +1602,11 @@ function setupChapterSentinel() {
   if (
     chapterObserver
   ) {
-    chapterObserver.disconnect();
+    chapterObserver
+      .disconnect();
 
-    chapterObserver = null;
+    chapterObserver =
+      null;
   }
 
   if (
@@ -1448,9 +1627,10 @@ function setupChapterSentinel() {
   sentinel.style.height =
     "2px";
 
-  chapterListEl.appendChild(
-    sentinel
-  );
+  chapterListEl
+    .appendChild(
+      sentinel
+    );
 
   if (
     "IntersectionObserver" in
@@ -1491,22 +1671,19 @@ function renderChapterIndex() {
     0;
 
   updateChapterCount();
+
   updateReadButton();
+
   renderSources();
 
   if (
     !currentChapters.length
   ) {
     chapterListEl.innerHTML = `
-      <div class="status-msg chapter-empty-state">
+      <div class="status-msg">
 
-        <strong>
-          No chapters are currently available inside the Panelly reader.
-        </strong>
-
-        <span>
-          Check the other reading sources above.
-        </span>
+        No chapters are currently available
+        inside the Panelly reader.
 
       </div>
     `;
@@ -1521,18 +1698,36 @@ async function init() {
   const mangaId =
     getMangaId();
 
-  if (!mangaId) {
+  if (
+    !mangaId
+  ) {
     detailEl.innerHTML = `
-      <p class="status-msg">
-        Invalid manga.
-      </p>
+      <div class="error-screen">
+
+        <div>
+
+          <h1>
+            Invalid manga.
+          </h1>
+
+          <p>
+            This series could not be opened.
+          </p>
+
+          <a
+            class="primary-button"
+            href="index.html"
+          >
+            Back Home
+          </a>
+
+        </div>
+
+      </div>
     `;
 
-    chapterListEl.innerHTML = `
-      <p class="status-msg">
-        No chapter information available.
-      </p>
-    `;
+    chapterListEl.innerHTML =
+      "";
 
     return;
   }
@@ -1543,7 +1738,9 @@ async function init() {
         mangaId
       );
 
-    if (!manga) {
+    if (
+      !manga
+    ) {
       throw new Error(
         "Manga not found"
       );
@@ -1576,38 +1773,57 @@ async function init() {
     );
 
     detailEl.innerHTML = `
-      <p class="status-msg">
-        Panelly couldn't load this series.
-      </p>
+      <div class="error-screen">
+
+        <div>
+
+          <h1>
+            Couldn't load series.
+          </h1>
+
+          <p>
+            Panelly couldn't load this title right now.
+          </p>
+
+          <a
+            class="primary-button"
+            href="index.html"
+          >
+            Back Home
+          </a>
+
+        </div>
+
+      </div>
     `;
 
-    chapterListEl.innerHTML = `
-      <p class="status-msg">
-        Couldn't load chapter information.
-      </p>
-    `;
+    chapterListEl.innerHTML =
+      "";
   }
 }
 
-searchForm?.addEventListener(
-  "submit",
-  event => {
-    event.preventDefault();
+searchForm
+  ?.addEventListener(
+    "submit",
+    event => {
+      event.preventDefault();
 
-    const term =
-      searchInput
-        ?.value
-        ?.trim();
+      const term =
+        searchInput
+          ?.value
+          ?.trim();
 
-    if (!term) {
-      return;
+      if (
+        !term
+      ) {
+        return;
+      }
+
+      window.location.href =
+        `index.html?search=${encodeURIComponent(
+          term
+        )}`;
     }
-
-    window.location.href =
-      `index.html?search=${encodeURIComponent(
-        term
-      )}`;
-  }
-);
+  );
 
 init();
