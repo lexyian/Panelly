@@ -62,7 +62,30 @@ const clearFiltersButton =
 const rouletteBtn =
   document.getElementById(
     "rouletteBtn"
-@@ -74,22 +89,48 @@
+  );
+
+const mobileRouletteBtn =
+  document.getElementById(
+    "mobileRouletteBtn"
+  );
+
+const continueSection =
+  document.getElementById(
+    "continueSection"
+  );
+
+const continueGrid =
+  document.getElementById(
+    "continueGrid"
+  );
+
+const shelfSection =
+  document.getElementById(
+    "shelfSection"
+  );
+
+const shelfGrid =
+  document.getElementById(
     "shelfGrid"
   );
 
@@ -100,7 +123,6 @@ function escapeHtml(value) {
     value ?? ""
   ).replace(
     /[&<>"']/g,
-    (char) =>
     (character) =>
       ({
         "&": "&amp;",
@@ -108,16 +130,18 @@ function escapeHtml(value) {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;"
-      })[char]
       })[character]
   );
 }
 
-@@ -101,15 +142,15 @@
+function stripText(value) {
+  if (!value) {
+    return "";
+  }
+
   const parser =
     new DOMParser();
 
-  const documentValue =
   const parsed =
     parser.parseFromString(
       value,
@@ -125,24 +149,48 @@ function escapeHtml(value) {
     );
 
   return (
-    documentValue.body
-      .textContent || ""
     parsed.body.textContent ||
     ""
   )
     .replace(/\s+/g, " ")
     .trim();
-@@ -150,13 +191,15 @@
+}
+
+async function apiFetch(
+  pathAndQuery
+) {
+  const response =
+    await fetch(
+      `/api/mangadex?path=${encodeURIComponent(
+        pathAndQuery
+      )}`
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      `MangaDex request failed: ${response.status}`
+    );
+  }
+
+  return response;
+}
+
+function buildQuery(params) {
+  const parts = [];
+
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ""
+    ) {
+      continue;
     }
 
     if (Array.isArray(value)) {
-      value.forEach((item) => {
-        parts.push(
-          `${key}[]=${encodeURIComponent(
-            item
-          )}`
-        );
-      });
       value.forEach(
         (item) => {
           parts.push(
@@ -155,18 +203,35 @@ function escapeHtml(value) {
     } else {
       parts.push(
         `${key}=${encodeURIComponent(
-@@ -189,14 +232,16 @@
+          value
+        )}`
+      );
+    }
+  }
+
+  return parts.join("&");
+}
+
+function getTitle(manga) {
+  const titles =
+    manga?.attributes?.title ||
+    {};
+
+  return (
+    titles.en ||
+    Object.values(titles)[0] ||
+    "Untitled"
+  );
+}
+
+function getDescription(
+  manga
+) {
+  const descriptions =
+    manga?.attributes
       ?.description ||
     {};
 
-  return stripText(
-    descriptions.en ||
-    Object.values(
-      descriptions
-    )[0] ||
-    ""
-  ) ||
-    "No description available.";
   return (
     stripText(
       descriptions.en ||
@@ -180,47 +245,72 @@ function escapeHtml(value) {
 }
 
 function getTags(manga) {
-@@ -217,18 +262,19 @@
+  return (
+    manga?.attributes?.tags ||
+    []
+  )
+    .map(
+      (tag) =>
+        tag?.attributes
+          ?.name?.en ||
+        Object.values(
+          tag?.attributes
+            ?.name ||
+          {}
+        )[0]
+    )
     .filter(Boolean);
 }
 
-function getCoverFile(manga) {
-  const relationship =
 function getCoverFile(
   manga
 ) {
   const cover =
     manga?.relationships
       ?.find(
-        (item) =>
-          item.type ===
         (relationship) =>
           relationship.type ===
           "cover_art"
       );
 
   return (
-    relationship
-      ?.attributes
     cover?.attributes
       ?.fileName ||
     ""
   );
-@@ -246,11 +292,11 @@
+}
+
+function coverUrl(
+  mangaId,
+  fileName,
+  size = 256
+) {
+  if (
+    !mangaId ||
+    !fileName
+  ) {
     return "";
   }
 
-  const original =
   const direct =
     `https://uploads.mangadex.org/covers/${mangaId}/${fileName}.${size}.jpg`;
 
   return `/api/proxy-image?url=${encodeURIComponent(
-    original
     direct
   )}`;
 }
 
-@@ -268,18 +314,83 @@
+function getMangaCover(
+  manga,
+  size = 256
+) {
+  return coverUrl(
+    manga.id,
+    getCoverFile(manga),
+    size
+  );
+}
+
 function getPrimaryGenre(
   manga
 ) {
@@ -233,7 +323,6 @@ function getPrimaryGenre(
   ];
 
   return (
-    getTags(manga)[0] ||
     tags.find(
       (tag) =>
         !ignored.includes(tag)
@@ -298,7 +387,6 @@ function validMangaDexId(
 ) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     .test(
-      String(id || "")
       String(
         id ||
         ""
@@ -306,17 +394,16 @@ function validMangaDexId(
     );
 }
 
-@@ -293,19 +404,15 @@
+function readStorage(key) {
+  try {
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          key
+        ) ||
         "[]"
       );
 
-    if (
-      Array.isArray(value)
-    ) {
-      return value;
-    }
-
-    return [];
     return Array.isArray(value)
       ? value
       : [];
@@ -325,32 +412,18 @@ function validMangaDexId(
   }
 }
 
-async function fetchGenres() {
 async function fetchAllTags() {
   const response =
     await apiFetch(
       "/manga/tag"
-@@ -314,44 +421,101 @@
+    );
+
   const json =
     await response.json();
 
-  return (
-    json.data || []
   return Array.isArray(
     json.data
   )
-    .filter(
-      (tag) =>
-        tag?.attributes
-          ?.group ===
-        "genre"
-    )
-    .map(
-      (tag) => ({
-        id: tag.id,
-        name:
-          tag?.attributes
-            ?.name?.en ||
     ? json.data
     : [];
 }
@@ -372,18 +445,6 @@ function findTagId(
             tag?.attributes
               ?.name ||
             {}
-          )[0]
-      })
-    )
-    .filter(
-      (tag) =>
-        tag.name
-    )
-    .sort(
-      (a, b) =>
-        a.name.localeCompare(
-          b.name
-        )
           )
             .filter(Boolean)
             .map(
@@ -403,7 +464,6 @@ function findTagId(
     "";
 }
 
-async function populateGenres() {
 async function populateGenresAndTags() {
   try {
     const tags =
@@ -422,7 +482,6 @@ async function populateGenresAndTags() {
       );
 
     const genres =
-      await fetchGenres();
       tags
         .filter(
           (tag) =>
@@ -460,13 +519,17 @@ async function populateGenresAndTags() {
 
     genres.forEach(
       (genre) => {
-@@ -366,25 +530,80 @@
+        const option =
+          document.createElement(
+            "option"
+          );
+
+        option.value =
+          genre.id;
+
         option.textContent =
           genre.name;
 
-        genreFilterEl.appendChild(
-          option
-        );
         genreFilterEl
           .appendChild(
             option
@@ -475,7 +538,6 @@ async function populateGenresAndTags() {
     );
   } catch (error) {
     console.error(
-      "Genre loading failed:",
       "Tag loading failed:",
       error
     );
@@ -545,7 +607,13 @@ async function fetchManga({
   const params = {
     limit,
     includes: [
-@@ -398,8 +617,28 @@
+      "cover_art"
+    ],
+    contentRating:
+      CONTENT_RATING,
+    availableTranslatedLanguage:
+      ["en"],
+    hasAvailableChapters:
       true
   };
 
@@ -574,24 +642,36 @@ async function fetchManga({
     params[
       "order[relevance]"
     ] = "desc";
-@@ -409,12 +648,6 @@
+  } else {
+    params[
+      `order[${order}]`
     ] = "desc";
-  }
-
-  if (tagId) {
-    params.includedTags = [
-      tagId
-    ];
   }
 
   const response =
     await apiFetch(
       `/manga?${buildQuery(
-@@ -439,52 +672,73 @@
+        params
+      )}`
+    );
+
+  const json =
+    await response.json();
+
+  return Array.isArray(
+    json.data
+  )
+    ? json.data
+    : [];
+}
+
+function renderHero(
+  manga,
+  number = 1
+) {
   if (!manga) {
     heroEl.innerHTML = `
       <div class="hero-loading">
-        No readable featured manga found.
         No readable featured title found.
       </div>
     `;
@@ -600,20 +680,16 @@ async function fetchManga({
   }
 
   const title =
-    getTitle(manga);
     getTitle(
       manga
     );
 
   const description =
-    getDescription(manga);
     getDescription(
       manga
     );
 
   const tags =
-    getTags(manga)
-      .slice(0, 4);
     getTags(
       manga
     ).slice(
@@ -638,14 +714,12 @@ async function fetchManga({
       <div class="hero-copy">
 
         <span class="hero-series-label">
-          ISSUE 001 / READABLE NOW
           ISSUE 001 / READABLE NOW / ${escapeHtml(
             origin
           )}
         </span>
 
         <h1 class="hero-title">
-          ${escapeHtml(title)}
           ${escapeHtml(
             title
           )}
@@ -657,7 +731,6 @@ async function fetchManga({
             .map(
               (tag) => `
                 <span class="hero-tag">
-                  ${escapeHtml(tag)}
                   ${escapeHtml(
                     tag
                   )}
@@ -669,18 +742,94 @@ async function fetchManga({
         </div>
 
         <p class="hero-description">
-@@ -564,7 +818,9 @@
+          ${escapeHtml(
+            description
+          )}
+        </p>
+
+        <div class="hero-actions">
+
+          <a
+            class="hero-primary"
+            href="detail.html?id=${encodeURIComponent(
+              manga.id
+            )}"
+          >
+            Open Series File →
+          </a>
+
+          <a
+            class="hero-secondary"
+            href="#browseSection"
+          >
+            Browse More
+          </a>
+
+        </div>
+
+      </div>
+
+      <div class="hero-art">
+
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  title
+                )} cover"
+              >
+            `
+            : `
+              <div class="image-fallback"></div>
+            `
+        }
+
+        <span class="hero-number">
+          ${String(
+            number
+          ).padStart(
+            2,
+            "0"
+          )}
+        </span>
+
+      </div>
+
+    </div>
+  `;
+}
+
+function createMangaCard(
+  manga,
+  index
+) {
+  const card =
+    document.createElement(
+      "article"
+    );
+
+  card.className =
+    "manga-card";
+
   card.tabIndex = 0;
 
   const title =
-    getTitle(manga);
     getTitle(
       manga
     );
 
   const cover =
     getMangaCover(
-@@ -577,6 +833,11 @@
+      manga,
+      256
+    );
+
+  const genre =
+    getPrimaryGenre(
       manga
     );
 
@@ -692,11 +841,43 @@ async function fetchManga({
   card.innerHTML = `
     <div class="card-cover-wrap">
 
-@@ -617,13 +878,27 @@
+      <span class="card-number">
+        PANEL ${String(
+          index + 1
+        ).padStart(
+          2,
+          "0"
+        )}
+      </span>
+
+      ${
+        cover
+          ? `
+            <img
+              src="${escapeHtml(
+                cover
+              )}"
+              alt="${escapeHtml(
+                title
+              )} cover"
+              loading="lazy"
+              decoding="async"
+            >
+          `
+          : `
+            <div class="image-fallback"></div>
+          `
+      }
+
+      <span class="card-readable">
+        READABLE
+      </span>
+
+    </div>
+
     <div class="card-info">
 
       <h3 class="card-title">
-        ${escapeHtml(title)}
         ${escapeHtml(
           title
         )}
@@ -704,8 +885,6 @@ async function fetchManga({
 
       <div class="card-meta">
 
-        <span>
-          ${escapeHtml(genre)}
         <span class="card-meta-left">
 
           <span>
@@ -723,16 +902,14 @@ async function fetchManga({
         </span>
 
         <span class="card-arrow">
-@@ -635,16 +910,17 @@
+          →
+        </span>
+
+      </div>
+
     </div>
   `;
 
-  const open = () => {
-    window.location.href =
-      `detail.html?id=${encodeURIComponent(
-        manga.id
-      )}`;
-  };
   const openManga =
     () => {
       window.location.href =
@@ -743,16 +920,19 @@ async function fetchManga({
 
   card.addEventListener(
     "click",
-    open
     openManga
   );
 
   card.addEventListener(
-@@ -657,34 +933,120 @@
+    "keydown",
+    (event) => {
+      if (
+        event.key ===
+          "Enter" ||
+        event.key ===
           " "
       ) {
         event.preventDefault();
-        open();
 
         openManga();
       }
@@ -844,20 +1024,17 @@ function createSpotlightCard(
 function renderBrowse(
   mangaList
 ) {
-  gridEl.innerHTML = "";
   gridEl.innerHTML =
     "";
 
   currentBrowsePool =
     mangaList;
 
-  if (!mangaList.length) {
   if (
     !mangaList.length
   ) {
     gridEl.innerHTML = `
       <p class="status-msg">
-        No readable manga matched your search.
         No readable titles matched these filters.
       </p>
     `;
@@ -866,7 +1043,6 @@ function renderBrowse(
   }
 
   mangaList.forEach(
-    (manga, index) => {
     (
       manga,
       index
@@ -874,7 +1050,10 @@ function renderBrowse(
       gridEl.appendChild(
         createMangaCard(
           manga,
-@@ -695,13 +1057,47 @@
+          index
+        )
+      );
+    }
   );
 }
 
@@ -916,24 +1095,24 @@ function renderFresh(
   freshGridEl.innerHTML =
     "";
 
-  if (!mangaList.length) {
   if (
     !mangaList.length
   ) {
     freshGridEl.innerHTML = `
       <p class="status-msg">
         No recent readable updates found.
-@@ -712,16 +1108,26 @@
+      </p>
+    `;
+
+    return;
   }
 
   mangaList.forEach(
-    (manga, index) => {
     (
       manga,
       index
     ) => {
       const title =
-        getTitle(manga);
         getTitle(
           manga
         );
@@ -952,7 +1131,40 @@ function renderFresh(
       const card =
         document.createElement(
           "a"
-@@ -762,6 +1168,8 @@
+        );
+
+      card.className =
+        "fresh-card";
+
+      card.href =
+        `detail.html?id=${encodeURIComponent(
+          manga.id
+        )}`;
+
+      card.innerHTML = `
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
+                )}"
+                alt="${escapeHtml(
+                  title
+                )} cover"
+                loading="lazy"
+              >
+            `
+            : `
+              <div class="image-fallback"></div>
+            `
+        }
+
+        <div class="fresh-info">
+
+          <span class="fresh-label">
+            FRESH INK ${String(
+              index + 1
             ).padStart(
               2,
               "0"
@@ -961,13 +1173,19 @@ function renderFresh(
             )}
           </span>
 
-@@ -778,9 +1186,10 @@
+          <span class="fresh-title">
+            ${escapeHtml(
+              title
+            )}
+          </span>
+
+          <span class="fresh-action">
+            VIEW SERIES →
+          </span>
+
         </div>
       `;
 
-      freshGridEl.appendChild(
-        card
-      );
       freshGridEl
         .appendChild(
           card
@@ -975,44 +1193,145 @@ function renderFresh(
     }
   );
 }
-@@ -826,9 +1235,14 @@
+
+function storedCover(
+  item
+) {
+  if (
+    item.coverFile &&
+    validMangaDexId(
+      item.mangaId
+    )
+  ) {
+    return coverUrl(
+      item.mangaId,
+      item.coverFile,
+      256
+    );
+  }
+
+  return "";
+}
+
+function renderContinueReading() {
+  const items =
+    readStorage(
+      CONTINUE_KEY
+    )
+      .filter(
+        (item) =>
+          validMangaDexId(
+            item.mangaId
+          )
+      )
+      .sort(
+        (a, b) =>
+          Number(
+            b.updatedAt ||
+            0
+          ) -
+          Number(
+            a.updatedAt ||
             0
           )
       )
-      .slice(0, 6);
       .slice(
         0,
         6
       );
 
-  if (!items.length) {
   if (
     !items.length
   ) {
     continueSection
       .classList.add(
         "hidden-section"
-@@ -867,7 +1281,9 @@
+      );
+
+    return;
+  }
+
+  continueSection
+    .classList.remove(
+      "hidden-section"
+    );
+
+  continueGrid.innerHTML =
+    "";
+
+  items.forEach(
+    (item) => {
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "continue-card";
+
+      card.href =
+        item.chapterId
+          ? `reader.html?chapterId=${encodeURIComponent(
+              item.chapterId
+            )}&mangaId=${encodeURIComponent(
+              item.mangaId
+            )}`
+          : `detail.html?id=${encodeURIComponent(
+              item.mangaId
             )}`;
 
       const cover =
-        storedCover(item);
         storedCover(
           item
         );
 
       const progress =
         Math.max(
-@@ -891,7 +1307,7 @@
+          0,
+          Math.min(
+            100,
+            Number(
+              item.progress ||
+              0
+            )
+          )
+        );
+
+      card.innerHTML = `
+        ${
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
                 )}"
                 alt="${escapeHtml(
                   item.mangaTitle ||
-                  "Manga"
                   "Series"
                 )} cover"
               >
             `
-@@ -919,16 +1335,20 @@
+            : ""
+        }
+
+        <div class="continue-info">
+
+          <span class="continue-label">
+            CONTINUE READING
+          </span>
+
+          <span class="continue-title">
+            ${escapeHtml(
+              item.mangaTitle ||
+              "Untitled"
+            )}
+          </span>
+
+          <span class="continue-chapter">
+            ${escapeHtml(
+              item.chapterLabel ||
+              "Continue"
+            )} →
           </span>
 
           <div class="reading-line">
@@ -1027,67 +1346,112 @@ function renderFresh(
       `;
 
       continueGrid
-        .appendChild(card);
         .appendChild(
           card
         );
     }
   );
 }
-@@ -955,9 +1375,14 @@
+
+function renderShelf() {
+  const items =
+    readStorage(
+      BOOKMARK_KEY
+    )
+      .filter(
+        (item) =>
+          validMangaDexId(
+            item.mangaId
+          )
+      )
+      .sort(
+        (a, b) =>
+          Number(
+            b.savedAt ||
+            0
+          ) -
+          Number(
+            a.savedAt ||
             0
           )
       )
-      .slice(0, 9);
       .slice(
         0,
         12
       );
 
-  if (!items.length) {
   if (
     !items.length
   ) {
     shelfSection
       .classList.add(
         "hidden-section"
-@@ -971,7 +1396,8 @@
+      );
+
+    return;
+  }
+
+  shelfSection
+    .classList.remove(
       "hidden-section"
     );
 
-  shelfGrid.innerHTML = "";
   shelfGrid.innerHTML =
     "";
 
   items.forEach(
     (item) => {
-@@ -989,7 +1415,9 @@
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "shelf-card";
+
+      card.href =
+        `detail.html?id=${encodeURIComponent(
+          item.mangaId
         )}`;
 
       const cover =
-        storedCover(item);
         storedCover(
           item
         );
 
       card.innerHTML = `
         ${
-@@ -1001,7 +1429,7 @@
+          cover
+            ? `
+              <img
+                src="${escapeHtml(
+                  cover
                 )}"
                 alt="${escapeHtml(
                   item.mangaTitle ||
-                  "Manga"
                   "Series"
                 )} cover"
               >
             `
-@@ -1024,65 +1452,144 @@
+            : ""
+        }
+
+        <div class="shelf-info">
+
+          <div class="shelf-title">
+            ${escapeHtml(
+              item.mangaTitle ||
+              "Untitled"
+            )}
+          </div>
+
+          <div class="shelf-label">
+            SAVED TO PANEL SHELF
+          </div>
+
         </div>
       `;
 
-      shelfGrid.appendChild(
-        card
-      );
       shelfGrid
         .appendChild(
           card
@@ -1096,7 +1460,6 @@ function renderFresh(
   );
 }
 
-async function loadBrowse() {
 function currentCategoryName() {
   const value =
     categoryFilterEl.value;
@@ -1148,14 +1511,9 @@ function updateBrowseTitle() {
     searchInput.value
       .trim();
 
-  const tagId =
-    genreFilterEl.value ||
-    "";
   const category =
     currentCategoryName();
 
-  const genreName =
-    tagId
   const origin =
     currentOriginName();
 
@@ -1167,23 +1525,6 @@ function updateBrowseTitle() {
         ].textContent
       : "";
 
-  if (
-    term &&
-    genreName
-  ) {
-    gridTitleEl.textContent =
-      `"${term}" · ${genreName}`;
-  } else if (term) {
-    gridTitleEl.textContent =
-      `Search: ${term}`;
-  } else if (
-    genreName
-  ) {
-    gridTitleEl.textContent =
-      genreName;
-  } else {
-    gridTitleEl.textContent =
-      "Main Panels";
   if (term) {
     parts.push(
       `"${term}"`
@@ -1219,7 +1560,6 @@ async function loadBrowse() {
 
   gridEl.innerHTML = `
     <div class="loading-panel">
-      Looking for readable manga...
       Looking for readable titles...
     </div>
   `;
@@ -1228,7 +1568,6 @@ async function loadBrowse() {
     const mangaList =
       await fetchManga({
         title:
-          term ||
           searchInput.value
             .trim() ||
           undefined,
@@ -1239,7 +1578,6 @@ async function loadBrowse() {
           undefined,
 
         tagId:
-          tagId ||
           genreFilterEl
             .value ||
           undefined,
@@ -1248,7 +1586,6 @@ async function loadBrowse() {
           originFilterEl
             .value ||
           undefined,
-        limit: 15,
 
         limit:
           15,
@@ -1256,14 +1593,11 @@ async function loadBrowse() {
         order:
           "followedCount"
       });
-@@ -1091,10 +1598,17 @@
+
+    renderBrowse(
       mangaList
     );
 
-    if (
-      !term &&
-      !tagId
-    ) {
     const noFilters =
       !searchInput.value
         .trim() &&
@@ -1278,47 +1612,50 @@ async function loadBrowse() {
       trendingPool =
         mangaList;
 
-@@ -1108,24 +1622,15 @@
+      if (
+        mangaList[0]
+      ) {
+        renderHero(
+          mangaList[0],
+          1
+        );
       }
     }
   } catch (error) {
-    console.error(error);
     console.error(
       error
     );
 
     gridEl.innerHTML = `
       <p class="status-msg">
-        Panelly couldn't load manga right now.
-        Please try again.
         Panelly couldn't load these titles right now.
       </p>
     `;
-
-    if (
-      !trendingPool.length
-    ) {
-      heroEl.innerHTML = `
-        <div class="hero-loading">
-          Couldn't load the featured series.
-        </div>
-      `;
-    }
   }
 }
 
-@@ -1142,7 +1647,9 @@
+async function loadFresh() {
+  try {
+    const mangaList =
+      await fetchManga({
+        limit: 8,
+        order:
+          "latestUploadedChapter"
+      });
+
+    renderFresh(
       mangaList
     );
   } catch (error) {
-    console.error(error);
     console.error(
       error
     );
 
     freshGridEl.innerHTML = `
       <p class="status-msg">
-@@ -1152,13 +1659,121 @@
+        Couldn't load recent updates.
+      </p>
+    `;
   }
 }
 
@@ -1429,20 +1766,31 @@ async function loadSpotlights() {
 
 function runRoulette() {
   const pool =
-    currentBrowsePool.length
     currentBrowsePool
       .length
       ? currentBrowsePool
       : trendingPool;
 
-  if (!pool.length) {
   if (
     !pool.length
   ) {
     return;
   }
 
-@@ -1179,59 +1794,206 @@
+  const index =
+    Math.floor(
+      Math.random() *
+      pool.length
+    );
+
+  renderHero(
+    pool[index],
+    index + 1
+  );
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
   });
 }
 
@@ -1505,31 +1853,16 @@ searchForm.addEventListener(
 
     loadBrowse();
 
-    document
-      .getElementById(
-        "browseSection"
-      )
-      .scrollIntoView({
-        behavior: "smooth"
-      });
     scrollToBrowse();
   }
 );
 
-genreFilterEl.addEventListener(
-  "change",
-  loadBrowse
-);
 categoryFilterEl
   .addEventListener(
     "change",
     loadBrowse
   );
 
-rouletteBtn.addEventListener(
-  "click",
-  runRoulette
-);
 originFilterEl
   .addEventListener(
     "change",
@@ -1560,7 +1893,6 @@ mobileRouletteBtn
     runRoulette
   );
 
-const urlParams =
 document
   .querySelectorAll(
     "[data-quick-category]"
@@ -1639,12 +1971,10 @@ const params =
   );
 
 const initialSearch =
-  urlParams.get(
   params.get(
     "search"
   );
 
-if (initialSearch) {
 if (
   initialSearch
 ) {
@@ -1652,8 +1982,6 @@ if (
     initialSearch;
 }
 
-renderContinueReading();
-renderShelf();
 async function initializePanelly() {
   renderContinueReading();
 
@@ -1668,9 +1996,4 @@ async function initializePanelly() {
   ]);
 }
 
-Promise.allSettled([
-  populateGenres(),
-  loadBrowse(),
-  loadFresh()
-]);
 initializePanelly();
